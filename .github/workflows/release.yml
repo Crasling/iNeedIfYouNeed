@@ -24,16 +24,16 @@ jobs:
           mkdir -p build
 
           # Create a clean folder structure for the add-on
-          mkdir -p build/iWillRemember
-          
+          mkdir -p build/iNeedIfYouNeed
+
           # Copy repository files to the final folder
-          cp -r $(ls -A | grep -v build) build/iWillRemember/
-          
+          cp -r $(ls -A | grep -v build) build/iNeedIfYouNeed/
+
           # Navigate to the build directory
           cd build
 
           # Create the zip file with the tag in the name
-          zip -r iWillRemember-$(git describe --tags).zip iWillRemember
+          zip -r iNeedIfYouNeed-$(git describe --tags).zip iNeedIfYouNeed
 
       - name: Extract Changelog for Latest Version
         id: changelog
@@ -48,6 +48,6 @@ jobs:
       - name: Publish to CurseForge
         uses: BigWigsMods/packager@v2
         with:
-          name: iWillRemember
-          path: build/iWillRemember-$(git describe --tags).zip
+          name: iNeedIfYouNeed
+          path: build/iNeedIfYouNeed-$(git describe --tags).zip
           changelog: ${{ steps.changelog.outputs.changelog }}
