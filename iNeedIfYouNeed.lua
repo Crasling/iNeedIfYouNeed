@@ -518,7 +518,7 @@ end
 eventFrame:SetScript("OnUpdate", OnUpdate)
 
 -- ═══════════════════════════════════════════════════════════
--- OPTIONS PANEL (iWR-style with General & About tabs)
+-- OPTIONS PANEL
 -- ═══════════════════════════════════════════════════════════
 
 -- Helper function to create iWR-style frame
@@ -658,7 +658,7 @@ local function CreateOptionsPanel()
 
     local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     titleText:SetPoint("CENTER", titleBar, "CENTER", 0, 0)
-    titleText:SetText(Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Green .. " v0.1.3.33")
+    titleText:SetText(Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Green .. " v0.1.4")
 
     local closeButton = CreateFrame("Button", nil, settingsFrame, "UIPanelCloseButton")
     closeButton:SetPoint("TOPRIGHT", settingsFrame, "TOPRIGHT", 0, 0)
@@ -843,7 +843,7 @@ local function CreateOptionsPanel()
 
     local aboutTitle = aboutContent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     aboutTitle:SetPoint("TOP", aboutContent, "TOP", 0, y)
-    aboutTitle:SetText(Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Reset .. " " .. Colors.Green .. "v0.1.3.33" .. Colors.Reset)
+    aboutTitle:SetText(Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Reset .. " " .. Colors.Green .. "v0.1.4" .. Colors.Reset)
     y = y - 20
 
     local aboutAuthor = aboutContent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -946,7 +946,7 @@ local function CreateOptionsPanel()
 
     local stubTitle = stubPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     stubTitle:SetPoint("TOPLEFT", 16, -16)
-    stubTitle:SetText(Colors.iNIF .. "iNeedIfYouNeed " .. Colors.Green .. "v0.1.3.33")
+    stubTitle:SetText(Colors.iNIF .. "iNeedIfYouNeed " .. Colors.Green .. "v0.1.4")
 
     local stubDesc = stubPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     stubDesc:SetPoint("TOPLEFT", stubTitle, "BOTTOMLEFT", 0, -10)
@@ -989,10 +989,10 @@ local function OnEvent(self, event, ...)
         if loadedAddon == addonName then
             -- Delayed startup message (like IWR)
             C_Timer.After(2, function()
-                print(Colors.iNIF .. "[iNIF]: iNeedIfYouNeed Classic TBC " .. Colors.Green .. "v0.1.3.33" .. Colors.iNIF .. " Loaded.")
+                print(Colors.iNIF .. "[iNIF]: iNeedIfYouNeed Classic TBC " .. Colors.Green .. "v0.1.4" .. Colors.iNIF .. " Loaded.")
 
                 -- Alpha version warning
-                local version = "0.1.3.33"
+                local version = "0.1.4"
                 if version:match("^0%.%d+%.%d+%.%d+$") then
                     print(Colors.iNIF .. "[iNIF]: " .. Colors.Yellow .. "WARNING" .. Colors.iNIF .. ": This is an alpha version and can be unstable and cause issues. If you do not want to run this version, please downgrade to the latest release.")
                 end
@@ -1013,6 +1013,12 @@ local function OnEvent(self, event, ...)
     elseif event == "START_LOOT_ROLL" then
         local rollID = ...
         Debug("START_LOOT_ROLL: " .. tostring(rollID))
+
+        -- Only process loot rolls when in a group or raid
+        if not IsInGroup() and not IsInRaid() then
+            Debug("Not in group or raid, ignoring loot roll", 3) -- INFO
+            return
+        end
 
         -- Get item info immediately
         local texture, name = GetLootRollItemInfo(rollID)
@@ -1129,7 +1135,7 @@ eventFrame:RegisterEvent("LOOT_BIND_CONFIRM")
 eventFrame:SetScript("OnEvent", OnEvent)
 
 -- ═══════════════════════════════════════════════════════════
--- CUSTOM MENU FRAME (iWR-style)
+-- CUSTOM MENU FRAME
 -- ═══════════════════════════════════════════════════════════
 
 -- Helper function to create iWR-style frame
@@ -1189,7 +1195,7 @@ titleBar:SetBackdropColor(0.07, 0.07, 0.12, 1)
 -- Title text
 local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
 titleText:SetPoint("CENTER", titleBar, "CENTER", 0, 0)
-titleText:SetText(Colors.iNIF .. "iNIF Menu" .. Colors.Green .. " v0.1.3.33")
+titleText:SetText(Colors.iNIF .. "iNIF Menu" .. Colors.Green .. " v0.1.4")
 
 -- Close button
 local closeButton = CreateFrame("Button", nil, iNIFMenuPanel, "UIPanelCloseButton")
@@ -1321,7 +1327,7 @@ if LDBroker and LDBIcon then
         end,
         OnTooltipShow = function(tooltip)
             if not tooltip then return end
-            tooltip:SetText(Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Green .. " v0.1.3.33", 1, 1, 1)
+            tooltip:SetText(Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Green .. " v0.1.4", 1, 1, 1)
             tooltip:AddLine(" ", 1, 1, 1)
             tooltip:AddLine("Left Click: Enable/Disable addon", 1, 1, 1)
             tooltip:AddLine("Right Click: Open settings", 1, 1, 1)
@@ -1388,7 +1394,7 @@ SlashCmdList["iNIF"] = function(msg)
         end
 
     else
-        print(Colors.iNIF .. "iNeedIfYouNeed v0.1.3.33" .. Colors.Reset)
+        print(Colors.iNIF .. "iNeedIfYouNeed v0.1.4" .. Colors.Reset)
         print(Colors.Yellow .. "Commands:" .. Colors.Reset)
         print("  /inif config - Open settings panel")
         print("  /inif toggle - Enable/disable addon")
