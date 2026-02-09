@@ -1,14 +1,14 @@
 ## Interface: 11506, 11508, 20505, 30405, 40401, 40402, 50503
-## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.1.4.1|r
-## Version: 0.1.4.1
+## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.1.5|r
+## Version: 0.1.5
 ## Notes: |cffff9716Smart Loot addOn|n|cFFFF0000Dont let them ninja without needing back.|r
 ## Author: Crasling
-## SavedVariables: iNIFDB
 ## IconTexture: Interface\AddOns\iNeedIfYouNeed\images\Logo_iNIF
 ## Category: Loot
 ## X-Curse-Project-ID: 1456725
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
+## SavedVariables: iNIFDB
 
 embeds.xml
 iNeedIfYouNeed.lua

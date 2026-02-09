@@ -1,1 +1,38 @@
-nothing here yet
+# iNeedIfYouNeed - Changelog
+
+## Version 0.1.5 (2025-02-09)
+
+### New Features
+- Added Shift+Left click minimap icon to show hidden loot frames
+- Party messages now use clickable item links instead of plain text
+
+### Bug Fixes
+- Fixed [Loot]: prefix appearing in player names in Need messages
+- Fixed Pass detection (critical bug - Pass rolls were never being tracked)
+
+### Improvements
+- Checkbox background now fully transparent (no color conflicts with elite boss frames)
+- Debug messages now use severity levels (INFO/WARNING/ERROR)
+- Loaded message always shows without INFO prefix
+- Debug activation message uses red warning text
+- Removed "Debug mode deactivated" messages
+
+### Minimap Icon Controls
+- Left Click: Enable/Disable addon
+- Shift+Left Click: Show hidden loot frames
+- Right Click: Open settings
+
+---
+
+## Version 0.1.4.x (Previous Development Versions)
+
+### Core Features
+- Smart loot monitoring with Greed+Checkbox system
+- Automatic Need rolling when others Need
+- Greed at end of timer if everyone Greeds
+- Party/raid announcements for auto-Need decisions
+- Loot frame hiding during monitoring mode
+- Debug mode with timer window
+- Settings panel with customization options
+- Minimap icon integration
+- Multiple Classic WoW version support (Vanilla, TBC, WotLK, Cata, MoP)
