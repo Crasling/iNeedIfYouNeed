@@ -1,5 +1,169 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.1.6 (2025-02-09)
+
+### Major Features
+- **Cross-Addon Communication**: Multiple iNIF users now coordinate when Greed+checkbox to avoid full 58s timer
+- **Full Localization System**: All text strings moved to localization files - ready for translations
+- **Party Announcements**: Fixed and working - announces to party/raid when auto-needing items
+
+### AceComm Integration
+- Added AceComm-3.0 for addon-to-addon communication
+- Implemented GREED_CHECKBOX message protocol
+- 2-second grace period for message coordination
+- Fixed race condition where grace period started too early
+- Grace period now correctly starts from your decision
+
+### Localization
+- Created Localization/enUS.lua with ~110 localized strings
+- All hardcoded text replaced with L["tag"] references
+- Colors system integrated into localization
+- Ready for community translations (svSV, deDE, frFR, etc.)
+
+### Party Announcements
+- Fixed party announcements not working during auto-need
+- Removed WoW-incompatible color codes from party messages
+- Added 0.5s delay to prevent chat throttling/spam filters
+- Added comprehensive debug logging for troubleshooting
+
+### Technical Details
+- Replaced `firstINIFMessageTime` with `ourDecisionTime` for symmetric grace period
+- Messages received before decision are now buffered correctly
+- SendChatMessage now uses plain text (WoW auto-formats item links)
+- Debug messages show: partyMessages setting, IsInGroup/IsInRaid status, channel selection
+- OnUpdate interval reduced from 0.1s to 0.5s (80% CPU reduction)
+
+### Bug Fixes
+- Fixed race condition in AceComm grace period timing
+- Fixed party announcements being silently dropped by WoW
+- Fixed hardcoded strings in Print() and Debug() functions
+- Fixed test command output to use localization
+
+### Dependencies
+- AceComm-3.0 (included)
+- CallbackHandler-1.0 (user must download)
+- ChatThrottleLib (included with AceComm)
+
+---
+
+## Version 0.1.5.8 (2025-02-09)
+
+### Bug Fixes
+- **CRITICAL**: Fixed party announcements by removing color codes from message
+- Party chat cannot contain manual color codes - they get stripped by WoW
+- Changed L["ChatPartyAutoNeed"] to plain text format
+- WoW now correctly formats and sends the party announcement
+
+### Technical Details
+- Removed Colors.iNIF, Colors.Yellow, and Colors.Reset from party message
+- SendChatMessage now receives clean plain text with item links
+- Item links are automatically formatted by WoW - no manual colors needed
+
+---
+
+## Version 0.1.5.7 (2025-02-09)
+
+### Debug
+- Added extensive debug logging for party announcements
+- Shows partyMessages setting, IsInGroup/IsInRaid status, channel selection
+- Shows when SendChatMessage is called and what message is sent
+- Debug messages appear when debug mode is enabled to troubleshoot party announce issues
+
+---
+
+## Version 0.1.5.6 (2025-02-09)
+
+### Bug Fixes
+- **CRITICAL**: Fixed party announcements not working during auto-need
+- Party announcements now delayed by 0.5s (same as chat notifications)
+- Prevents silent failures due to WoW's chat throttling and spam filters
+
+### Technical Details
+- Added C_Timer.After(0.5s) wrapper around both SendChatMessage calls
+- Ensures WoW has processed the Need roll before announcing to party/raid
+- Prevents message loss during loot spam period
+- Both local and party messages now appear synchronized
+
+---
+
+## Version 0.1.5.5 (2025-02-09)
+
+### Bug Fixes
+- Fixed remaining hardcoded strings in print statements
+- All Print() and Debug() functions now use localization
+- Fixed test command output to use L["tags"]
+- Standardized all message prefixes using localization
+
+### Technical Details
+- Added L["PrintPrefix"] and L["DebugPrefix"] for consistent messaging
+- Debug function simplified to use pre-formatted L["DebugInfo/Warning/Error"]
+- All ~100+ user-facing strings now fully localized
+
+---
+
+## Version 0.1.5.4 (2025-02-09)
+
+### New Features
+- Added full localization system for future translations
+- All user-facing text now uses localization tags (L["tag"])
+- Created Localization/enUS.lua with ~100 localized strings
+- Colors table integrated into localization system
+
+### Technical Details
+- Localization folder structure: Localization/locale.xml and Localization/enUS.lua
+- Fallback system ensures missing translations show English text
+- Ready for community translations (svSV, deDE, frFR, etc.)
+- All hardcoded strings replaced with L["tag"] references
+
+---
+
+## Version 0.1.5.3 (2025-02-09)
+
+### Bug Fixes
+- **CRITICAL**: Fixed AceComm race condition where grace period started too early
+- Grace period now starts from YOUR decision, not when first message arrives
+- Prevents premature auto-rolling before all iNIF users have decided
+- Fixes incorrect "Greedviacomms" count (was 1, should be 2+)
+
+### Technical Details
+- Replaced `firstINIFMessageTime` with `ourDecisionTime`
+- Grace period now symmetric across all players
+- Messages received before our decision are buffered correctly
+
+---
+
+## Version 0.1.5.2 (2025-02-09)
+
+### New Features
+- Added `/inif testcomm` command to test AceComm functionality solo
+- Simulates receiving GREED_CHECKBOX message from fake player
+- Temporarily enables debug mode to show message processing
+- Verifies message parsing and iNIFGreeds tracking
+
+### Improvements
+- Reduced OnUpdate interval from 0.1s to 0.5s (80% less CPU usage)
+- Checks every 0.5 seconds instead of every 0.1 seconds
+
+---
+
+## Version 0.1.5.1 (2025-02-09)
+
+### New Features
+- Added AceComm-3.0 cross-addon communication
+- Multiple iNIF users in same group now auto-roll faster
+- When 2+ iNIF users click Greed+checkbox, they coordinate via addon messages
+- Auto-roll after 2-second grace period instead of waiting full 58 seconds
+- Fallback to timer still works for non-iNIF users
+
+### Technical
+- Integrated AceComm-3.0, CallbackHandler-1.0, and ChatThrottleLib
+- Added "iNIF" comm prefix for party/raid messages
+- Message format: "GREED_CHECKBOX|rollID|itemLink"
+- 2-second grace period allows message propagation
+- Debug messages for comm send/receive only show in debug mode
+
+---
+
 ## Version 0.1.5 (2025-02-09)
 
 ### New Features

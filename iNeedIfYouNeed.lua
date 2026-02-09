@@ -5,6 +5,7 @@
 -- ═══════════════════════════════════════════════════════════
 
 local addonName, iNIF = ...
+local L = iNIF.L or {}  -- Load localization table with fallback
 local Title = select(2, C_AddOns.GetAddOnInfo(addonName)):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("%s*v?[%d%.]+$", "")
 local Version = C_AddOns.GetAddOnMetadata(addonName, "Version")
 local Author = C_AddOns.GetAddOnMetadata(addonName, "Author")
@@ -12,6 +13,7 @@ local Author = C_AddOns.GetAddOnMetadata(addonName, "Author")
 -- Load libraries
 local LDBroker = LibStub("LibDataBroker-1.1", true)
 local LDBIcon = LibStub("LibDBIcon-1.0", true)
+local AceComm = LibStub("AceComm-3.0", true)
 
 -- ═══════════════════════════════════════════════════════════
 -- SAVED VARIABLES & SETTINGS
@@ -129,7 +131,7 @@ local function CreateTimerWindow()
     -- Title bar
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", frame, "TOP", 0, -14)
-    title:SetText(Colors.iNIF .. "Active Rolls")
+    title:SetText(Colors.iNIF .. L["MonitorWindowTitle"])
 
     -- Close button
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
@@ -138,7 +140,7 @@ local function CreateTimerWindow()
     closeBtn:SetScript("OnClick", function()
         frame:Hide()
         if iNIFDB.debug then
-            print(Colors.iNIF .. "[iNIF]: " .. Colors.Reset .. "Monitor window hidden. Re-enable debug mode to show it again.")
+            print(L["DebugPrefix"] .. L["MonitorWindowHidden"])
         end
     end)
 
@@ -219,7 +221,7 @@ end
 -- ═══════════════════════════════════════════════════════════
 local function Print(msg)
     if iNIFDB.showNotifications then
-        print(Colors.iNIF .. "[iNIF]" .. Colors.Reset .. " " .. msg)
+        print(L["PrintPrefix"] .. msg)
     end
 end
 
@@ -231,19 +233,27 @@ local function Debug(msg, level)
     if iNIFDB.debug then
         level = level or 3 -- Default to INFO
 
-        local prefix = Colors.iNIF .. "[iNIF]: "
-
         if level == 1 then
-            -- ERROR: Red severity label, orange message text
-            print(prefix .. Colors.Red .. "ERROR: " .. Colors.Reset .. Colors.iNIF .. msg .. Colors.Reset)
+            print(L["DebugError"] .. msg)
         elseif level == 2 then
-            -- WARNING: Yellow severity label, orange message text
-            print(prefix .. Colors.Yellow .. "WARNING: " .. Colors.Reset .. Colors.iNIF .. msg .. Colors.Reset)
+            print(L["DebugWarning"] .. msg)
         else
-            -- INFO: White severity label, orange message text (level 3 or undefined)
-            print(prefix .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF .. msg .. Colors.Reset)
+            print(L["DebugInfo"] .. msg)
         end
     end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- HELPER FUNCTIONS
+-- ═══════════════════════════════════════════════════════════
+
+-- Count number of entries in a table
+local function CountTable(tbl)
+    local count = 0
+    for _ in pairs(tbl) do
+        count = count + 1
+    end
+    return count
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -290,8 +300,8 @@ local function CreateCheckbox(parent, rollID)
 
         -- Show tooltip
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Need if someone needs", 1, 1, 1, 1, true)
-        GameTooltip:AddLine("When greeding: Automatically roll Need if someone else rolls Need, otherwise Greed at the end of the timer.", nil, nil, nil, true)
+        GameTooltip:SetText(L["CheckboxTooltipTitle"], 1, 1, 1, 1, true)
+        GameTooltip:AddLine(L["CheckboxTooltipDesc"], nil, nil, nil, true)
         GameTooltip:Show()
     end)
 
@@ -336,11 +346,75 @@ local function ProcessRoll(rollID)
     -- Delay message by 0.5s to appear after WoW's item roll spam
     local itemLink = roll.itemLink -- Capture in closure
     C_Timer.After(0.5, function()
-        Print(Colors.Green .. "Rolled GREED" .. Colors.Reset .. " on " .. itemLink .. " (nobody needed)")
+        Print(L["ChatRolledGreed"] .. string.format(L["ChatNobodyNeeded"], itemLink))
     end)
 
     -- Don't clean up immediately - keep the processed flag to prevent recreation
     -- Will be cleaned up by CANCEL_LOOT_ROLL event
+end
+
+-- AceComm message handler
+function iNIF:OnCommReceived(prefix, message, distribution, sender)
+    -- Only process iNIF prefix
+    if prefix ~= "iNIF" then
+        return
+    end
+
+    -- Clean sender name (remove realm)
+    sender = Ambiguate(sender, "short")
+    local myName = UnitName("player")
+
+    -- Ignore our own messages
+    if sender == myName then
+        return
+    end
+
+    if iNIFDB.debug then
+        Debug("Received comm from " .. sender .. ": " .. message, 3) -- INFO
+    end
+
+    -- Parse message: "GREED_CHECKBOX|<rollID>|<itemLink>"
+    local msgType, rollIDStr, itemLink = message:match("^([^|]+)|([^|]+)|(.+)$")
+
+    if msgType == "GREED_CHECKBOX" then
+        local rollID = tonumber(rollIDStr)
+        if not rollID then
+            if iNIFDB.debug then
+                Debug("Invalid rollID in comm message: " .. (rollIDStr or "nil"), 2) -- WARNING
+            end
+            return
+        end
+
+        local roll = activeRolls[rollID]
+        if not roll then
+            if iNIFDB.debug then
+                Debug("Received comm for unknown rollID: " .. rollID, 2) -- WARNING
+            end
+            return
+        end
+
+        if roll.processed then
+            if iNIFDB.debug then
+                Debug("Received comm for already-processed rollID: " .. rollID, 3) -- INFO
+            end
+            return
+        end
+
+        -- Track this iNIF user's decision
+        if not roll.iNIFGreeds then
+            roll.iNIFGreeds = {}
+        end
+
+        roll.iNIFGreeds[sender] = true
+        if iNIFDB.debug then
+            Debug("Tracked iNIF Greed+checkbox from " .. sender .. " for rollID: " .. rollID .. " (total: " .. CountTable(roll.iNIFGreeds) .. ")", 3) -- INFO
+        end
+
+        -- Check if we should auto-roll based on iNIF decisions
+        if roll.checkboxEnabled and roll.greedClicked then
+            CheckIfAllINIFGreeded(rollID)
+        end
+    end
 end
 
 -- Helper function to check if all party members have greeded
@@ -390,6 +464,50 @@ local function CheckIfAllGreeded(rollID)
     end
 
     return false
+end
+
+-- Check if all iNIF users have decided (Greed+checkbox)
+-- This allows faster auto-roll when multiple addon users are in the party
+local function CheckIfAllINIFGreeded(rollID)
+    local roll = activeRolls[rollID]
+    if not roll or roll.processed or not roll.checkboxEnabled or not roll.greedClicked then
+        return false
+    end
+
+    if not roll.iNIFGreeds then
+        return false
+    end
+
+    local iNIFUserCount = CountTable(roll.iNIFGreeds)
+
+    -- Require at least 1 other iNIF user to have decided
+    -- (If iNIFUserCount == 0, means only we have iNIF, so fall back to timer)
+    if iNIFUserCount < 1 then
+        return false
+    end
+
+    -- Don't count until WE have decided
+    if not roll.ourDecisionTime then
+        return false  -- We haven't clicked yet, messages are buffered
+    end
+
+    -- Grace period starts from OUR decision, not first message
+    local elapsed = GetTime() - roll.ourDecisionTime
+    if elapsed < 2 then
+        -- Still in grace period, waiting for other iNIF users to respond
+        if iNIFDB.debug and elapsed < 0.1 then
+            Debug("Grace period started (2s from our decision). Waiting for other iNIF users...", 3) -- INFO
+        end
+        return false
+    end
+
+    -- Grace period over, and we have at least 1+ other iNIF users decided
+    -- (Including ourselves, that's 2+ total iNIF users)
+    if iNIFDB.debug then
+        Debug("Grace period expired. iNIF users decided: " .. (iNIFUserCount + 1) .. " including self. Auto-rolling Greed!", 3) -- INFO
+    end
+    ProcessRoll(rollID)
+    return true
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -463,7 +581,10 @@ local function EnhanceRollFrame(frame, rollID)
                         checkboxEnabled = false,
                         greedClicked = false,
                         greedRolls = {},
-                        passRolls = {}
+                        passRolls = {},
+                        iNIFGreeds = {},
+                        iNIFCommSent = false,
+                        ourDecisionTime = nil  -- Time when WE clicked Greed+checkbox
                     }
                     roll = activeRolls[currentRollID]
                     Debug("Created roll object, checking if it exists: " .. tostring(roll ~= nil) .. ", rollID=" .. currentRollID)
@@ -479,10 +600,22 @@ local function EnhanceRollFrame(frame, rollID)
                 if roll then
                     roll.checkboxEnabled = true
                     roll.greedClicked = true
+                    roll.ourDecisionTime = GetTime()  -- Record when we decided
                     roll.frame = frame
                     roll.checkbox = checkbox
 
                     Debug("Greed clicked with checkbox enabled for rollID: " .. currentRollID)
+
+                    -- Send AceComm message to notify other iNIF users
+                    if AceComm and not roll.iNIFCommSent and (IsInGroup() or IsInRaid()) then
+                        roll.iNIFCommSent = true
+                        local distribution = IsInRaid() and "RAID" or "PARTY"
+                        local message = "GREED_CHECKBOX|" .. currentRollID .. "|" .. roll.itemLink
+                        iNIF:SendCommMessage("iNIF", message, distribution, nil, "NORMAL")
+                        if iNIFDB.debug then
+                            Debug("Sent GREED_CHECKBOX comm: " .. message .. " on " .. distribution, 3) -- INFO
+                        end
+                    end
 
                     -- Check if someone already needed BEFORE we clicked Greed+Checkbox
                     if roll.needDetected and roll.neededBy then
@@ -493,14 +626,22 @@ local function EnhanceRollFrame(frame, rollID)
                         local itemLink = roll.itemLink -- Capture in closure
                         local neededBy = roll.neededBy:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
                         C_Timer.After(0.5, function()
-                            Print(Colors.Orange .. "Rolling NEED" .. Colors.Reset .. " on " .. itemLink .. " because " .. Colors.Yellow .. neededBy .. Colors.Reset .. " needed it")
+                            Print(Colors.Orange .. L["ChatRollingNeed"] .. string.format(L["ChatBecauseNeeded"], itemLink, neededBy))
                         end)
 
-                        -- Announce to party/raid if enabled
+                        -- Announce to party/raid if enabled (delayed 0.5s like Print to avoid spam filters)
+                        Debug("Party announce check: partyMessages=" .. tostring(iNIFDB.partyMessages) .. ", IsInGroup=" .. tostring(IsInGroup()) .. ", IsInRaid=" .. tostring(IsInRaid()), 3)
                         if iNIFDB.partyMessages and (IsInGroup() or IsInRaid()) then
                             local channel = IsInRaid() and "RAID" or "PARTY"
+                            Debug("Preparing party announce on channel: " .. channel, 3)
                             local cleanPlayerName = roll.neededBy:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-                            SendChatMessage("[iNIF] Automatically needed on " .. roll.itemLink .. " because " .. cleanPlayerName .. " needed.", channel)
+                            local capturedItemLink = roll.itemLink -- Capture in closure
+                            C_Timer.After(0.5, function()
+                                Debug("Sending party announce: " .. cleanPlayerName .. " - " .. capturedItemLink, 3)
+                                SendChatMessage(string.format(L["ChatPartyAutoNeed"], capturedItemLink, cleanPlayerName), channel)
+                            end)
+                        else
+                            Debug("Party announce skipped - conditions not met", 3)
                         end
 
                         roll.processed = true
@@ -511,7 +652,7 @@ local function EnhanceRollFrame(frame, rollID)
                     if not iNIFDB.debug and iNIFDB.hideLootFrame then
                         frame:Hide()
                     end
-                    Print("Monitoring " .. roll.itemLink .. "... Will Need if someone Needs, otherwise Greed at end of timer.")
+                    Print(string.format(L["ChatMonitoring"], roll.itemLink))
 
                     -- Check if everyone has already greeded (handles late Greed+checkbox click)
                     CheckIfAllGreeded(currentRollID)
@@ -562,15 +703,23 @@ local function OnNeedDetected(playerName, itemLink)
                         local itemLink = roll.itemLink -- Capture in closure
                         local playerWhoNeeded = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
                         C_Timer.After(0.5, function()
-                            Print(Colors.Orange .. "Rolling NEED" .. Colors.Reset .. " on " .. itemLink .. " because " .. Colors.Yellow .. playerWhoNeeded .. Colors.Reset .. " needed it")
+                            Print(Colors.Orange .. L["ChatRollingNeed"] .. string.format(L["ChatBecauseNeeded"], itemLink, playerWhoNeeded))
                         end)
 
-                        -- Announce to party/raid if enabled
+                        -- Announce to party/raid if enabled (delayed 0.5s like Print to avoid spam filters)
+                        Debug("Party announce check: partyMessages=" .. tostring(iNIFDB.partyMessages) .. ", IsInGroup=" .. tostring(IsInGroup()) .. ", IsInRaid=" .. tostring(IsInRaid()), 3)
                         if iNIFDB.partyMessages and (IsInGroup() or IsInRaid()) then
                             local channel = IsInRaid() and "RAID" or "PARTY"
+                            Debug("Preparing party announce on channel: " .. channel, 3)
                             -- Clean player name from [Loot]: prefix, color codes and hyperlinks
                             local cleanPlayerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-                            SendChatMessage("[iNIF] Automatically needed on " .. roll.itemLink .. " because " .. cleanPlayerName .. " needed.", channel)
+                            local capturedItemLink = roll.itemLink -- Capture in closure
+                            C_Timer.After(0.5, function()
+                                Debug("Sending party announce: " .. cleanPlayerName .. " - " .. capturedItemLink, 3)
+                                SendChatMessage(string.format(L["ChatPartyAutoNeed"], capturedItemLink, cleanPlayerName), channel)
+                            end)
+                        else
+                            Debug("Party announce skipped - conditions not met", 3)
                         end
 
                         roll.processed = true
@@ -660,8 +809,8 @@ local updateTimer = 0
 local function OnUpdate(self, elapsed)
     updateTimer = updateTimer + elapsed
 
-    -- Check every 0.1 seconds
-    if updateTimer < 0.1 then
+    -- Check every 0.5 seconds (reduced from 0.1s to lower CPU usage)
+    if updateTimer < 0.5 then
         return
     end
     updateTimer = 0
@@ -670,9 +819,10 @@ local function OnUpdate(self, elapsed)
 
     for rollID, roll in pairs(activeRolls) do
         if not roll.processed then
-            -- Check if everyone has decided (periodic check to catch delayed chat events)
+            -- Check if everyone has decided (periodic check to catch delayed chat events OR iNIF comm messages)
             if roll.checkboxEnabled and roll.greedClicked then
                 CheckIfAllGreeded(rollID)
+                CheckIfAllINIFGreeded(rollID)
             end
 
             -- Calculate elapsed time since roll started
@@ -951,9 +1101,9 @@ local function CreateOptionsPanel()
     end
 
     -- Create sidebar buttons
-    local sidebarLabels = {"General", "About"}
+    local sidebarLabels = {L["TabGeneral"], L["TabAbout"]}
     if iWRInstalled then
-        table.insert(sidebarLabels, "iWR Settings")
+        table.insert(sidebarLabels, L["TabIWRSettings"])
     end
 
     for i, label in ipairs(sidebarLabels) do
@@ -993,31 +1143,31 @@ local function CreateOptionsPanel()
     -- ═══════════════════════════════════════════════════════════
     local y = -10
 
-    _, y = CreateSectionHeader(generalContent, Colors.iNIF .. "Addon Settings", y)
+    _, y = CreateSectionHeader(generalContent, L["SettingsSectionAddon"], y)
 
     local cbEnabled
-    cbEnabled, y = CreateSettingsCheckbox(generalContent, "Enable Addon",
-        "When disabled, the addon will not add checkboxes to loot windows.", y, "enabled")
+    cbEnabled, y = CreateSettingsCheckbox(generalContent, L["SettingsEnableAddon"],
+        L["SettingsEnableAddonDesc"], y, "enabled")
     checkboxRefs.enabled = cbEnabled
 
     local cbNotify
-    cbNotify, y = CreateSettingsCheckbox(generalContent, "Show Chat Notifications",
-        "Display messages in chat when rolling on items.", y, "showNotifications")
+    cbNotify, y = CreateSettingsCheckbox(generalContent, L["SettingsShowNotifications"],
+        L["SettingsShowNotificationsDesc"], y, "showNotifications")
     checkboxRefs.showNotifications = cbNotify
 
     local cbParty
-    cbParty, y = CreateSettingsCheckbox(generalContent, "Announce Needs to Party/Raid",
-        "Announce to party or raid chat when you need an item because someone else needed it.", y, "partyMessages")
+    cbParty, y = CreateSettingsCheckbox(generalContent, L["SettingsPartyAnnounce"],
+        L["SettingsPartyAnnounceDesc"], y, "partyMessages")
     checkboxRefs.partyMessages = cbParty
 
     local cbHideLootFrame
-    cbHideLootFrame, y = CreateSettingsCheckbox(generalContent, "Hide Loot Frame After Greed+Checkbox",
-        "Hide Blizzard's loot frame (Need/Greed/Pass window) after clicking Greed with checkbox enabled.", y, "hideLootFrame")
+    cbHideLootFrame, y = CreateSettingsCheckbox(generalContent, L["SettingsHideLootFrame"],
+        L["SettingsHideLootFrameDesc"], y, "hideLootFrame")
     checkboxRefs.hideLootFrame = cbHideLootFrame
 
     local cbHideMonitorWindow
-    cbHideMonitorWindow, y = CreateSettingsCheckbox(generalContent, "Hide Monitor Window After Greed+Checkbox",
-        "Hide the Active Rolls monitor window after clicking Greed with checkbox enabled.", y, "hideMonitorWindow")
+    cbHideMonitorWindow, y = CreateSettingsCheckbox(generalContent, L["SettingsHideMonitor"],
+        L["SettingsHideMonitorDesc"], y, "hideMonitorWindow")
     checkboxRefs.hideMonitorWindow = cbHideMonitorWindow
 
     scrollChildren[1]:SetHeight(math.abs(y) + 20)
@@ -1027,7 +1177,7 @@ local function CreateOptionsPanel()
     -- ═══════════════════════════════════════════════════════════
     y = -10
 
-    _, y = CreateSectionHeader(aboutContent, Colors.iNIF .. "About", y)
+    _, y = CreateSectionHeader(aboutContent, L["SettingsSectionAbout"], y)
 
     y = y - 20
 
@@ -1045,28 +1195,27 @@ local function CreateOptionsPanel()
 
     local aboutAuthor = aboutContent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     aboutAuthor:SetPoint("TOP", aboutContent, "TOP", 0, y)
-    aboutAuthor:SetText("Created by: " .. Colors.Teal .. "Crasling")
+    aboutAuthor:SetText(L["AboutCreatedBy"] .. Colors.Teal .. "Crasling")
     y = y - 16
 
     local aboutGameVer = aboutContent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     aboutGameVer:SetPoint("TOP", aboutContent, "TOP", 0, y)
-    aboutGameVer:SetText("Classic TBC")
+    aboutGameVer:SetText(L["AboutGameVersion"])
     y = y - 30
 
     local aboutInfo
     aboutInfo, y = CreateInfoText(aboutContent,
-        Colors.iNIF .. "iNeedIfYouNeed" .. Colors.Reset .. " is an addon designed to help you with smart looting.\n\n" ..
-        Colors.iNIF .. "iNIF" .. Colors.Reset .. " is in early development. Join the Discord for help with issues, questions, or suggestions.",
+        L["AboutDescription1"] .. "\n\n" .. L["AboutDescription2"],
         y, "GameFontHighlight")
 
     -- Discord Section
     y = y - 10
-    _, y = CreateSectionHeader(aboutContent, "Discord", y)
+    _, y = CreateSectionHeader(aboutContent, L["SettingsSectionDiscord"], y)
     y = y - 2
 
     local discordDesc = aboutContent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     discordDesc:SetPoint("TOPLEFT", aboutContent, "TOPLEFT", 25, y)
-    discordDesc:SetText("Copy this link to join our Discord for support and updates")
+    discordDesc:SetText(L["AboutDiscordDesc"])
     y = y - 16
 
     local discordBox = CreateFrame("EditBox", nil, aboutContent, "InputBoxTemplate")
@@ -1085,11 +1234,11 @@ local function CreateOptionsPanel()
 
     -- Developer Section
     y = y - 8
-    _, y = CreateSectionHeader(aboutContent, Colors.iNIF .. "Developer", y)
+    _, y = CreateSectionHeader(aboutContent, L["SettingsSectionDeveloper"], y)
 
     local cbDebug
-    cbDebug, y = CreateSettingsCheckbox(aboutContent, "Enable Debug Mode",
-        "|cFF808080Enables verbose debug messages in chat. Not recommended for normal use.|r", y, "debug")
+    cbDebug, y = CreateSettingsCheckbox(aboutContent, L["SettingsDebugMode"],
+        L["SettingsDebugModeDesc"], y, "debug")
     checkboxRefs.debug = cbDebug
 
     -- Override the debug checkbox handler to show activation warning
@@ -1100,7 +1249,7 @@ local function CreateOptionsPanel()
 
         -- Show activation warning (like iWR) - second sentence in red
         if checked then
-            print(Colors.iNIF .. "[iNIF]: " .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF .. "Debug Mode is activated. " .. Colors.Red .. "This is not recommended for common use and will cause message spam." .. Colors.Reset)
+            print(L["DebugModeActivatedFull"])
         end
     end)
 
@@ -1112,12 +1261,11 @@ local function CreateOptionsPanel()
     if iWRInstalled and iWRContent then
         y = -10
 
-        _, y = CreateSectionHeader(iWRContent, Colors.iNIF .. "iWillRemember Settings", y)
+        _, y = CreateSectionHeader(iWRContent, L["SettingsSectionIWR"], y)
 
         local iWRInfo
         iWRInfo, y = CreateInfoText(iWRContent,
-            Colors.iNIF .. "iWillRemember" .. Colors.Reset .. " is installed! You can access iWR settings from here.\n\n" ..
-            "Note: These settings are managed by iWR and will affect the iWR addon.",
+            L["IWRInstalledDesc1"] .. "\n\n" .. L["IWRInstalledDesc2"],
             y, "GameFontHighlight")
 
         y = y - 10
@@ -1126,7 +1274,7 @@ local function CreateOptionsPanel()
         local iWRButton = CreateFrame("Button", nil, iWRContent, "UIPanelButtonTemplate")
         iWRButton:SetSize(180, 28)
         iWRButton:SetPoint("TOPLEFT", iWRContent, "TOPLEFT", 25, y)
-        iWRButton:SetText("Open iWR Settings")
+        iWRButton:SetText(L["IWROpenSettingsButton"])
         iWRButton:SetScript("OnClick", function()
             -- Open iWR's settings frame if it exists
             if iWR and iWR.SettingsFrame then
@@ -1150,12 +1298,12 @@ local function CreateOptionsPanel()
 
     local stubDesc = stubPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     stubDesc:SetPoint("TOPLEFT", stubTitle, "BOTTOMLEFT", 0, -10)
-    stubDesc:SetText("Left-click the minimap button or type " .. Colors.Yellow .. "/inif settings" .. Colors.Reset .. " to open the full settings panel.")
+    stubDesc:SetText(L["StubPanelDesc"])
 
     local stubButton = CreateFrame("Button", nil, stubPanel, "UIPanelButtonTemplate")
     stubButton:SetSize(180, 28)
     stubButton:SetPoint("TOPLEFT", stubDesc, "BOTTOMLEFT", 0, -15)
-    stubButton:SetText("Open Settings")
+    stubButton:SetText(L["StubOpenSettingsButton"])
     stubButton:SetScript("OnClick", function() settingsFrame:Show() end)
 
     if InterfaceOptions_AddCategory then
@@ -1187,9 +1335,20 @@ local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local loadedAddon = ...
         if loadedAddon == addonName then
+            -- Initialize AceComm
+            if AceComm then
+                AceComm:Embed(iNIF)
+                iNIF:RegisterComm("iNIF", "OnCommReceived")
+                if iNIFDB.debug then
+                    Debug("AceComm initialized and registered prefix 'iNIF'", 3) -- INFO
+                end
+            else
+                Debug("AceComm-3.0 not found! Cross-addon communication disabled.", 1) -- ERROR
+            end
+
             -- Delayed startup message (like iWR) - always shows, no severity prefix
             C_Timer.After(2, function()
-                print(Colors.iNIF .. "[iNIF]: " .. Title .. " Classic TBC " .. Colors.Green .. "v" .. Version .. Colors.iNIF .. " Loaded.")
+                print(L["DebugPrefix"] .. string.format(L["StartupMessage"], Title, Colors.Green .. "v" .. Version .. Colors.iNIF))
             end)
         end
 
@@ -1241,7 +1400,10 @@ local function OnEvent(self, event, ...)
             checkboxEnabled = false,  -- Will be set to true when user clicks Greed with checkbox
             greedClicked = false,     -- Track if user has clicked Greed
             greedRolls = {},          -- Track who has greeded: {playerName = true}
-            passRolls = {}            -- Track who has passed: {playerName = true}
+            passRolls = {},           -- Track who has passed: {playerName = true}
+            iNIFGreeds = {},          -- Track iNIF users who greeded with checkbox: {playerName = true}
+            iNIFCommSent = false,     -- Track if we sent our comm message
+            ourDecisionTime = nil      -- Time when WE clicked Greed+checkbox
         }
 
         Debug("Started timer for rollID: " .. rollID .. ", stored itemLink: " .. tostring(activeRolls[rollID].itemLink) .. ", duration: 60s")
@@ -1418,7 +1580,7 @@ titleBar:SetBackdropColor(0.07, 0.07, 0.12, 1)
 -- Title text
 local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
 titleText:SetPoint("CENTER", titleBar, "CENTER", 0, 0)
-titleText:SetText(Colors.iNIF .. "iNIF Menu" .. Colors.Green .. " v" .. Version)
+titleText:SetText(L["MenuTitle"] .. Colors.Green .. " v" .. Version)
 
 -- Close button
 local closeButton = CreateFrame("Button", nil, iNIFMenuPanel, "UIPanelCloseButton")
@@ -1433,13 +1595,13 @@ local yOffset = -45
 -- Enable/Disable checkbox
 local enableCheck = CreateFrame("CheckButton", nil, iNIFMenuPanel, "UICheckButtonTemplate")
 enableCheck:SetPoint("TOPLEFT", 20, yOffset)
-enableCheck.text:SetText(Colors.iNIF .. "Enable Addon")
+enableCheck.text:SetText(Colors.iNIF .. L["MenuEnableAddon"])
 enableCheck:SetChecked(iNIFDB.enabled)
 table.insert(iNIF.CheckboxRegistry.enabled, enableCheck)
 enableCheck:SetScript("OnClick", function(self)
     local checked = self:GetChecked()
     iNIFDB.enabled = checked
-    Debug(checked and (Colors.Green .. "Smart looting activated" .. Colors.Reset) or (Colors.Red .. "Smart looting deactivated" .. Colors.Reset))
+    Debug(checked and L["StatusEnabled"] or L["StatusDisabled"])
     UpdateAllCheckboxes("enabled", checked)
 end)
 yOffset = yOffset - 30
@@ -1447,13 +1609,13 @@ yOffset = yOffset - 30
 -- Show notifications checkbox
 local notifyCheck = CreateFrame("CheckButton", nil, iNIFMenuPanel, "UICheckButtonTemplate")
 notifyCheck:SetPoint("TOPLEFT", 20, yOffset)
-notifyCheck.text:SetText(Colors.iNIF .. "Show Notifications")
+notifyCheck.text:SetText(Colors.iNIF .. L["MenuShowNotifications"])
 notifyCheck:SetChecked(iNIFDB.showNotifications)
 table.insert(iNIF.CheckboxRegistry.showNotifications, notifyCheck)
 notifyCheck:SetScript("OnClick", function(self)
     local checked = self:GetChecked()
     iNIFDB.showNotifications = checked
-    Debug("Notifications " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+    Debug(L["SlashNotifications"] .. (checked and L["SlashEnabled"] or L["SlashDisabled"]))
     UpdateAllCheckboxes("showNotifications", checked)
 end)
 yOffset = yOffset - 30
@@ -1461,13 +1623,13 @@ yOffset = yOffset - 30
 -- Party announcements checkbox
 local partyCheck = CreateFrame("CheckButton", nil, iNIFMenuPanel, "UICheckButtonTemplate")
 partyCheck:SetPoint("TOPLEFT", 20, yOffset)
-partyCheck.text:SetText(Colors.iNIF .. "Party Announcements")
+partyCheck.text:SetText(Colors.iNIF .. L["MenuPartyAnnouncements"])
 partyCheck:SetChecked(iNIFDB.partyMessages)
 table.insert(iNIF.CheckboxRegistry.partyMessages, partyCheck)
 partyCheck:SetScript("OnClick", function(self)
     local checked = self:GetChecked()
     iNIFDB.partyMessages = checked
-    Debug("Party announcements " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+    Debug(L["SlashPartyMessages"] .. (checked and L["SlashEnabled"] or L["SlashDisabled"]))
     UpdateAllCheckboxes("partyMessages", checked)
 end)
 yOffset = yOffset - 30
@@ -1475,13 +1637,13 @@ yOffset = yOffset - 30
 -- Hide loot frame checkbox
 local hideLootCheck = CreateFrame("CheckButton", nil, iNIFMenuPanel, "UICheckButtonTemplate")
 hideLootCheck:SetPoint("TOPLEFT", 20, yOffset)
-hideLootCheck.text:SetText(Colors.iNIF .. "Hide Loot Frame After Greed+Checkbox")
+hideLootCheck.text:SetText(Colors.iNIF .. L["MenuHideLootFrame"])
 hideLootCheck:SetChecked(iNIFDB.hideLootFrame)
 table.insert(iNIF.CheckboxRegistry.hideLootFrame, hideLootCheck)
 hideLootCheck:SetScript("OnClick", function(self)
     local checked = self:GetChecked()
     iNIFDB.hideLootFrame = checked
-    Debug("Hide loot frame " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+    Debug("Hide loot frame " .. (checked and L["SlashEnabled"] or L["SlashDisabled"]))
     UpdateAllCheckboxes("hideLootFrame", checked)
 end)
 yOffset = yOffset - 30
@@ -1489,13 +1651,13 @@ yOffset = yOffset - 30
 -- Hide monitor window checkbox
 local hideMonitorWindowCheck = CreateFrame("CheckButton", nil, iNIFMenuPanel, "UICheckButtonTemplate")
 hideMonitorWindowCheck:SetPoint("TOPLEFT", 20, yOffset)
-hideMonitorWindowCheck.text:SetText(Colors.iNIF .. "Hide Monitor Window After Greed+Checkbox")
+hideMonitorWindowCheck.text:SetText(Colors.iNIF .. L["MenuHideMonitor"])
 hideMonitorWindowCheck:SetChecked(iNIFDB.hideMonitorWindow)
 table.insert(iNIF.CheckboxRegistry.hideMonitorWindow, hideMonitorWindowCheck)
 hideMonitorWindowCheck:SetScript("OnClick", function(self)
     local checked = self:GetChecked()
     iNIFDB.hideMonitorWindow = checked
-    Debug("Hide monitor window " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+    Debug("Hide monitor window " .. (checked and L["SlashEnabled"] or L["SlashDisabled"]))
     UpdateAllCheckboxes("hideMonitorWindow", checked)
 
     -- Show/hide timer window immediately
@@ -1512,7 +1674,7 @@ yOffset = yOffset - 30
 -- Debug mode checkbox
 local debugCheck = CreateFrame("CheckButton", nil, iNIFMenuPanel, "UICheckButtonTemplate")
 debugCheck:SetPoint("TOPLEFT", 20, yOffset)
-debugCheck.text:SetText(Colors.iNIF .. "Debug Mode")
+debugCheck.text:SetText(Colors.iNIF .. L["MenuDebugMode"])
 debugCheck:SetChecked(iNIFDB.debug)
 table.insert(iNIF.CheckboxRegistry.debug, debugCheck)
 debugCheck:SetScript("OnClick", function(self)
@@ -1522,7 +1684,7 @@ debugCheck:SetScript("OnClick", function(self)
 
     -- Show activation warning (like iWR) - second sentence in red
     if checked then
-        print(Colors.iNIF .. "[iNIF]: " .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF .. "Debug Mode is activated. " .. Colors.Red .. "This is not recommended for common use and will cause message spam." .. Colors.Reset)
+        print(Colors.iNIF .. "[iNIF]: " .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF .. L["DebugModeActivated"] .. Colors.Red .. L["DebugModeWarning"] .. Colors.Reset)
     end
 
     -- Show/hide timer window based on debug mode
@@ -1540,7 +1702,7 @@ yOffset = yOffset - 40
 local settingsButton = CreateFrame("Button", nil, iNIFMenuPanel, "UIPanelButtonTemplate")
 settingsButton:SetSize(120, 26)
 settingsButton:SetPoint("TOPLEFT", 20, yOffset)
-settingsButton:SetText("Full Settings")
+settingsButton:SetText(L["MenuFullSettings"])
 settingsButton:SetScript("OnClick", function()
     iNIFMenuPanel:Hide()
     if iNIF.SettingsFrame then
@@ -1600,15 +1762,16 @@ if LDBroker and LDBIcon then
                     end
 
                     if framesShown > 0 then
-                        Print(Colors.Green .. "Showing " .. framesShown .. " hidden loot frame" .. (framesShown > 1 and "s" or "") .. Colors.Reset)
+                        local msg = framesShown == 1 and L["ShowingFramesSingular"] or L["ShowingFramesPlural"]
+                        print(string.format(msg, framesShown))
                     else
-                        Print(Colors.Yellow .. "No hidden loot frames to show" .. Colors.Reset)
+                        print(L["NoHiddenFrames"])
                     end
                 else
                     -- Regular Left: Toggle enable/disable
                     iNIFDB.enabled = not iNIFDB.enabled
                     -- Show status message in chat
-                    Print(iNIFDB.enabled and (Colors.Green .. "Smart looting activated" .. Colors.Reset) or (Colors.Red .. "Smart looting deactivated" .. Colors.Reset))
+                    Print(iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"])
                     -- Update all checkboxes
                     UpdateAllCheckboxes("enabled", iNIFDB.enabled)
                 end
@@ -1623,11 +1786,11 @@ if LDBroker and LDBIcon then
             if not tooltip then return end
             tooltip:SetText(Colors.iNIF .. Title .. Colors.Green .. " v" .. Version, 1, 1, 1)
             tooltip:AddLine(" ", 1, 1, 1)
-            tooltip:AddLine(Colors.Yellow .. "Left Click: " .. Colors.Orange .. "Enable/Disable addon", 1, 1, 1)
-            tooltip:AddLine(Colors.Yellow .. "Shift+Left Click: " .. Colors.Orange .. "Show hidden loot frames", 1, 1, 1)
-            tooltip:AddLine(Colors.Yellow .. "Right Click: " .. Colors.Orange .. "Open settings", 1, 1, 1)
+            tooltip:AddLine(L["TooltipLeftClick"] .. L["TooltipToggleAddon"], 1, 1, 1)
+            tooltip:AddLine(L["TooltipRightClick"] .. L["TooltipOpenSettings"], 1, 1, 1)
+            tooltip:AddLine(L["TooltipShiftLeftClick"] .. L["TooltipShowFrames"], 1, 1, 1)
             tooltip:AddLine(" ", 1, 1, 1)
-            tooltip:AddLine("Status: " .. (iNIFDB.enabled and (Colors.Green .. "Smart looting activated") or (Colors.Red .. "Smart looting deactivated")), 1, 1, 1)
+            tooltip:AddLine(L["TooltipStatus"] .. (iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"]), 1, 1, 1)
             tooltip:Show()
         end,
     })
@@ -1650,19 +1813,19 @@ SlashCmdList["iNIF"] = function(msg)
 
     elseif msg == "toggle" then
         iNIFDB.enabled = not iNIFDB.enabled
-        Print(iNIFDB.enabled and (Colors.Green .. "Smart looting activated" .. Colors.Reset) or (Colors.Red .. "Smart looting deactivated" .. Colors.Reset))
+        Print(iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"])
 
     elseif msg == "notifications" or msg == "notify" then
         iNIFDB.showNotifications = not iNIFDB.showNotifications
-        Print("Notifications " .. (iNIFDB.showNotifications and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+        Print(L["SlashNotifications"] .. (iNIFDB.showNotifications and L["SlashEnabled"] or L["SlashDisabled"]))
 
     elseif msg == "party" then
         iNIFDB.partyMessages = not iNIFDB.partyMessages
-        Print("Party messages " .. (iNIFDB.partyMessages and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+        Print(L["SlashPartyMessages"] .. (iNIFDB.partyMessages and L["SlashEnabled"] or L["SlashDisabled"]))
 
     elseif msg == "remember" then
         iNIFDB.checkboxRememberState = not iNIFDB.checkboxRememberState
-        Print("Remember checkbox state " .. (iNIFDB.checkboxRememberState and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+        Print(L["SlashRememberState"] .. (iNIFDB.checkboxRememberState and L["SlashEnabled"] or L["SlashDisabled"]))
 
     elseif msg == "debug" then
         iNIFDB.debug = not iNIFDB.debug
@@ -1670,38 +1833,102 @@ SlashCmdList["iNIF"] = function(msg)
 
         -- Show activation warning (like iWR) - second sentence in red
         if iNIFDB.debug then
-            print(Colors.iNIF .. "[iNIF]: " .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF .. "Debug Mode is activated. " .. Colors.Red .. "This is not recommended for common use and will cause message spam." .. Colors.Reset)
+            print(L["DebugModeActivatedFull"])
         end
 
     elseif msg == "test" then
         -- Test if START_LOOT_ROLL event is being caught
-        print(Colors.iNIF .. "[iNIF TEST]" .. Colors.Reset)
-        print("Active rolls count: " .. Colors.Yellow .. tostring(#activeRolls) .. Colors.Reset)
-        print("Registered events:")
-        print("  - ADDON_LOADED: " .. (eventFrame:IsEventRegistered("ADDON_LOADED") and Colors.Green .. "YES" or Colors.Red .. "NO") .. Colors.Reset)
-        print("  - PLAYER_LOGIN: " .. (eventFrame:IsEventRegistered("PLAYER_LOGIN") and Colors.Green .. "YES" or Colors.Red .. "NO") .. Colors.Reset)
-        print("  - START_LOOT_ROLL: " .. (eventFrame:IsEventRegistered("START_LOOT_ROLL") and Colors.Green .. "YES" or Colors.Red .. "NO") .. Colors.Reset)
-        print("  - CANCEL_LOOT_ROLL: " .. (eventFrame:IsEventRegistered("CANCEL_LOOT_ROLL") and Colors.Green .. "YES" or Colors.Red .. "NO") .. Colors.Reset)
+        print(L["TestHeader"])
+        print(L["TestActiveRollsCount"] .. Colors.Yellow .. tostring(#activeRolls) .. Colors.Reset)
+        print(L["TestRegisteredEvents"])
+        print(L["TestEventAddonLoaded"] .. (eventFrame:IsEventRegistered("ADDON_LOADED") and L["TestYes"] or L["TestNo"]))
+        print(L["TestEventPlayerLogin"] .. (eventFrame:IsEventRegistered("PLAYER_LOGIN") and L["TestYes"] or L["TestNo"]))
+        print(L["TestEventStartLootRoll"] .. (eventFrame:IsEventRegistered("START_LOOT_ROLL") and L["TestYes"] or L["TestNo"]))
+        print(L["TestEventCancelLootRoll"] .. (eventFrame:IsEventRegistered("CANCEL_LOOT_ROLL") and L["TestYes"] or L["TestNo"]))
 
         -- List all active rolls
         local count = 0
         for rollID, roll in pairs(activeRolls) do
             count = count + 1
-            print("  Roll #" .. count .. ": ID=" .. rollID .. ", item=" .. roll.itemLink .. ", checkbox=" .. tostring(roll.checkboxEnabled))
+            print(string.format(L["TestRollInfo"], count, rollID, roll.itemLink, tostring(roll.checkboxEnabled)))
         end
         if count == 0 then
-            print("  " .. Colors.Yellow .. "No active rolls" .. Colors.Reset)
+            print("  " .. Colors.Yellow .. L["TestNoActiveRolls"] .. Colors.Reset)
+        end
+
+    elseif msg == "testcomm" then
+        -- Test AceComm message reception
+        print(L["TestCommHeader"])
+
+        -- Check if AceComm is loaded
+        if not AceComm then
+            print(L["TestCommNotLoaded"])
+            return
+        end
+
+        -- Find an active roll to test with
+        local testRollID = nil
+        local testItemLink = nil
+        for rollID, roll in pairs(activeRolls) do
+            if not roll.processed and roll.checkboxEnabled and roll.greedClicked then
+                testRollID = rollID
+                testItemLink = roll.itemLink
+                break
+            end
+        end
+
+        if not testRollID then
+            print(L["TestCommNoRoll"])
+            print(L["TestCommInstructions"])
+            return
+        end
+
+        -- Enable debug mode temporarily to see output
+        local debugWasOff = not iNIFDB.debug
+        if debugWasOff then
+            iNIFDB.debug = true
+            print(L["TestDebugTempEnabled"])
+        end
+
+        -- Simulate receiving message from fake player
+        local fakePlayer = "TestPlayer"
+        local fakeMessage = "GREED_CHECKBOX|" .. testRollID .. "|" .. testItemLink
+
+        print(L["TestCommSimulating"] .. Colors.Yellow .. fakePlayer .. Colors.Reset)
+        print(L["TestCommMessage"] .. Colors.Yellow .. fakeMessage .. Colors.Reset)
+
+        -- Call OnCommReceived directly (this is what AceComm would call)
+        iNIF:OnCommReceived("iNIF", fakeMessage, "PARTY", fakePlayer)
+
+        -- Check if it was tracked
+        local roll = activeRolls[testRollID]
+        if roll and roll.iNIFGreeds and roll.iNIFGreeds[fakePlayer] then
+            print(L["TestCommSuccess1"])
+            print(L["TestCommSuccess2"])
+            print(L["TestCommTotalUsers"] .. Colors.Yellow .. (CountTable(roll.iNIFGreeds) + 1) .. L["TestCommIncludingYou"] .. Colors.Reset)
+            print(L["TestCommGracePeriod"])
+        else
+            print(L["TestCommFailed"])
+        end
+
+        -- Restore debug mode if it was off
+        if debugWasOff then
+            C_Timer.After(3, function()
+                iNIFDB.debug = false
+                print(L["TestDebugRestored"])
+            end)
         end
 
     else
-        print(Colors.iNIF .. Title .. " v" .. Version .. Colors.Reset)
-        print(Colors.Yellow .. "Commands:" .. Colors.Reset)
-        print("  /inif config - Open settings panel")
-        print("  /inif toggle - Enable/disable addon")
-        print("  /inif notifications - Toggle chat notifications")
-        print("  /inif party - Toggle party/raid announcements")
-        print("  /inif remember - Toggle checkbox state memory")
-        print("  /inif debug - Toggle debug mode")
-        print("  /inif test - Show addon status and active rolls")
+        print(Colors.iNIF .. string.format(L["SlashVersionInfo"], Title, Version) .. Colors.Reset)
+        print(L["SlashCommandsHeader"])
+        print("  " .. L["SlashHelpConfig"])
+        print("  " .. L["SlashHelpToggle"])
+        print("  " .. L["SlashHelpNotifications"])
+        print("  " .. L["SlashHelpParty"])
+        print("  " .. L["SlashHelpRemember"])
+        print("  " .. L["SlashHelpDebug"])
+        print("  " .. L["SlashHelpTest"])
+        print("  " .. L["SlashHelpTestComm"])
     end
 end
