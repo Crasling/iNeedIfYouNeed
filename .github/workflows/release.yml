@@ -25,10 +25,10 @@ jobs:
 
           # Create a clean folder structure for the add-on
           mkdir -p build/iNeedIfYouNeed
-
+          
           # Copy repository files to the final folder
-          cp -r iNeedIfYouNeed build/
-
+          cp -r $(ls -A | grep -v build) build/iNeedIfYouNeed/
+          
           # Navigate to the build directory
           cd build
 
@@ -48,8 +48,6 @@ jobs:
       - name: Publish to CurseForge
         uses: BigWigsMods/packager@v2
         with:
-          args: >
-            -n iNeedIfYouNeed
-            -p build/iNeedIfYouNeed-$(git describe --tags).zip
-            -c "${{ steps.changelog.outputs.changelog }}"
-
+          name: iNeedIfYouNeed
+          path: build/iNeedIfYouNeed-$(git describe --tags).zip
+          changelog: ${{ steps.changelog.outputs.changelog }}
