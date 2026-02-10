@@ -49,7 +49,7 @@ jobs:
         uses: BigWigsMods/packager@v2
         with:
           args: >
-            -p build/iNeedIfYouNeed-$(git describe --tags).zip
             -n iNeedIfYouNeed
+            -p build/iNeedIfYouNeed-$(git describe --tags).zip
             -c "${{ steps.changelog.outputs.changelog }}"
 
