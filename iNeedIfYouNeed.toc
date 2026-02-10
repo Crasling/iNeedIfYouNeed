@@ -1,6 +1,6 @@
 ## Interface: 11506, 11508, 20505, 30405, 40401, 40402, 50503
-## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.1.7|r
-## Version: 0.1.7
+## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.1.8|r
+## Version: 0.1.8
 ## Notes: |cffff9716Smart Loot addOn|n|cFFFF0000Dont let them ninja without needing back.|r
 ## Author: Crasling
 ## IconTexture: Interface\AddOns\iNeedIfYouNeed\images\Logo_iNIF
