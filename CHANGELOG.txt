@@ -1,5 +1,8 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.1.7 (2025-02-10)
+- Minor changes
+
 ## Version 0.1.6 (2025-02-09)
 
 ### Major Features
@@ -18,7 +21,6 @@
 - Created Localization/enUS.lua with ~110 localized strings
 - All hardcoded text replaced with L["tag"] references
 - Colors system integrated into localization
-- Ready for community translations (svSV, deDE, frFR, etc.)
 
 ### Party Announcements
 - Fixed party announcements not working during auto-need

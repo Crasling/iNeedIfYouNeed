@@ -51,7 +51,7 @@ end
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                                 Debug Messages                                 │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
-L["PrintPrefix"] = Colors.iNIF .. "[iNIF]" .. Colors.Reset .. " "
+L["PrintPrefix"] = Colors.iNIF .. "[iNIF]: "
 L["DebugPrefix"] = Colors.iNIF .. "[iNIF]: "
 L["DebugInfo"] = Colors.iNIF .. "[iNIF]: " .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF
 L["DebugWarning"] = Colors.iNIF .. "[iNIF]: " .. Colors.Yellow .. "WARNING: " .. Colors.Reset .. Colors.iNIF
@@ -74,10 +74,10 @@ L["CheckboxTooltipDesc"] = "When greeding: Automatically roll Need if someone el
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["ChatRolledGreed"] = Colors.Green .. "Rolled GREED" .. Colors.Reset
 L["ChatNobodyNeeded"] = " on %s (nobody needed)"
-L["ChatRollingNeed"] = Colors.Yellow .. "Rolling NEED" .. Colors.Reset
+L["ChatRollingNeed"] = Colors.Red .. "Rolled NEED" .. Colors.Reset
 L["ChatBecauseNeeded"] = " on %s because " .. Colors.Yellow .. "%s" .. Colors.Reset .. " needed it"
-L["ChatPartyAutoNeed"] = "[iNIF] Automatically needed on %s because %s needed."
-L["ChatMonitoring"] = Colors.iNIF .. "Monitoring" .. Colors.Reset .. " %s... Will Need if someone Needs, otherwise Greed at end of timer."
+L["ChatPartyAutoNeed"] = "[iNIF]: Automatically needed on %s because %s needed."
+L["ChatMonitoring"] = Colors.iNIF .. "Monitoring %s... Will Need if someone Needs, otherwise Greed at end of timer."
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                            Minimap Button Tooltip                              │
