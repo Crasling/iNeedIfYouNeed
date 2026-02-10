@@ -27,7 +27,7 @@ jobs:
           mkdir -p build/iNeedIfYouNeed
 
           # Copy repository files to the final folder
-          cp -r $(ls -A | grep -v build) build/iNeedIfYouNeed/
+          cp -r iNeedIfYouNeed build/
 
           # Navigate to the build directory
           cd build
