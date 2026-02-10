@@ -48,6 +48,8 @@ jobs:
       - name: Publish to CurseForge
         uses: BigWigsMods/packager@v2
         with:
-          name: iNeedIfYouNeed
-          path: build/iNeedIfYouNeed-$(git describe --tags).zip
-          changelog: ${{ steps.changelog.outputs.changelog }}
+          args: >
+            -p build/iNeedIfYouNeed-$(git describe --tags).zip
+            -n iNeedIfYouNeed
+            -c "${{ steps.changelog.outputs.changelog }}"
+
