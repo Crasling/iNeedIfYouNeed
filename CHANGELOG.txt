@@ -1,7 +1,7 @@
 # iNeedIfYouNeed - Changelog
 
-## Version 0.1.7 (2025-02-10)
-- Minor changes
+## Version 0.2.1 (2025-02-11)
+- Release to Github stuff...
 
 ## Version 0.1.6 (2025-02-09)
 

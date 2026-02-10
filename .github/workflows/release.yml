@@ -3,17 +3,53 @@ name: Release AddOn
 on:
   push:
     tags:
-      - '*'
+      - '*' # Trigger on any tag
+
+env:
+  CF_API_KEY: ${{ secrets.CF_API_KEY }}
+  GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Fetch full history for tags
 
-      - uses: BigWigsMods/packager@v2
-        env:
-          CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare Build Directory
+        run: |
+          # Ensure the build directory exists
+          mkdir -p build
+
+          # Create a clean folder structure for the add-on
+          mkdir -p build/iNeedIfYouNeed
+
+          # Copy repository files to the final folder
+          cp -r iNeedIfYouNeed build/
+
+          # Navigate to the build directory
+          cd build
+
+          # Create the zip file with the tag in the name
+          zip -r iNeedIfYouNeed-$(git describe --tags).zip iNeedIfYouNeed
+
+      - name: Extract Changelog for Latest Version
+        id: changelog
+        run: |
+          # Extract everything between the first and second version headers in CHANGELOG.txt
+          changelog=$(awk '/^v[0-9]+\.[0-9]+/{if(found) exit; found=1; next} found' CHANGELOG.txt)
+          # Write to GITHUB_OUTPUT using delimiter for multiline
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$changelog" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Publish to CurseForge
+        uses: BigWigsMods/packager@v2
+        with:
+          args: >
+            -n iNeedIfYouNeed
+            -p build/iNeedIfYouNeed-$(git describe --tags).zip
+            -c "${{ steps.changelog.outputs.changelog }}"
+
