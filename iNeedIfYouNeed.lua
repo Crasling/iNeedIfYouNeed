@@ -225,7 +225,7 @@ local function Print(msg)
     end
 end
 
--- Debug message with levels (like iWR)
+-- Debug message with levels
 -- Level 1 = ERROR (red)
 -- Level 2 = WARNING (yellow)
 -- Level 3 = INFO (white) - default
@@ -441,10 +441,22 @@ local function CheckIfAllGreeded(rollID)
         end
     end
 
-    -- Count how many have greeded
+    -- Count how many have greeded (from CHAT_MSG_LOOT)
     local greedCount = 0
     for _ in pairs(roll.greedRolls) do
         greedCount = greedCount + 1
+    end
+
+    -- Count iNIF users who clicked Greed+checkbox (via AceComm)
+    -- These won't show in CHAT_MSG_LOOT until they actually roll
+    local iNIFGreedCount = 0
+    if roll.iNIFGreeds then
+        for playerName, _ in pairs(roll.iNIFGreeds) do
+            -- Only count if they're NOT already in greedRolls (avoid double-counting)
+            if not roll.greedRolls[playerName] then
+                iNIFGreedCount = iNIFGreedCount + 1
+            end
+        end
     end
 
     -- Count how many have passed
@@ -453,10 +465,10 @@ local function CheckIfAllGreeded(rollID)
         passCount = passCount + 1
     end
 
-    Debug("Decision count: " .. greedCount .. " greeds, " .. passCount .. " passes = " .. (greedCount + passCount) .. "/" .. partySize .. " for rollID " .. rollID)
+    Debug("Decision count: " .. greedCount .. " greeds (chat), " .. iNIFGreedCount .. " greeds (iNIF), " .. passCount .. " passes = " .. (greedCount + iNIFGreedCount + passCount) .. "/" .. partySize .. " for rollID " .. rollID)
 
     -- If everyone else has decided (greeded OR passed), roll Greed immediately
-    local decidedCount = greedCount + passCount
+    local decidedCount = greedCount + iNIFGreedCount + passCount
     if partySize > 0 and decidedCount >= partySize then
         Debug("Everyone decided: " .. greedCount .. " greeds, " .. passCount .. " passes. Auto-rolling Greed now.", 3) -- INFO
         ProcessRoll(rollID)
@@ -501,12 +513,11 @@ local function CheckIfAllINIFGreeded(rollID)
         return false
     end
 
-    -- Grace period over, and we have at least 1+ other iNIF users decided
-    -- (Including ourselves, that's 2+ total iNIF users)
+    -- Don't auto-roll! Let CheckIfAllGreeded() handle the actual roll when EVERYONE decided
     if iNIFDB.debug then
-        Debug("Grace period expired. iNIF users decided: " .. (iNIFUserCount + 1) .. " including self. Auto-rolling Greed!", 3) -- INFO
+        Debug("All iNIF users decided (" .. (iNIFUserCount + 1) .. " including self). Waiting for rest of party to decide...", 3) -- INFO
     end
-    ProcessRoll(rollID)
+    -- Return true to indicate iNIF coordination is complete, but don't ProcessRoll yet
     return true
 end
 

@@ -1,5 +1,29 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.2.2 (2025-02-11)
+
+### Critical Bug Fixes
+- **MAJOR FIX**: CheckIfAllINIFGreeded no longer auto-rolls before all party members decide
+  - Previously: Auto-rolled Greed after 2s grace period when iNIF users coordinated
+  - Now: Grace period only skips 58s timer, still waits for ALL party members (iNIF + non-iNIF)
+  - Prevents greeding before non-iNIF players have chance to Need
+
+- **MAJOR FIX**: CheckIfAllGreeded now counts iNIF Greed+checkbox decisions from AceComm
+  - Previously: Only counted decisions visible in CHAT_MSG_LOOT
+  - Now: Counts both regular greeds (chat) AND iNIF greeds (AceComm) AND passes
+  - Fixes scenario where iNIF users' checkbox decisions weren't counted toward "everyone decided"
+
+### Technical Details
+- Removed ProcessRoll() call from CheckIfAllINIFGreeded (line ~508)
+- Added iNIFGreedCount to CheckIfAllGreeded counting logic
+- Avoids double-counting players who appear in both iNIFGreeds and greedRolls
+- Debug messages now show: "greeds (chat), greeds (iNIF), passes = total/partySize"
+
+### What This Means
+- iNIF coordination works correctly: skips 58s timer when multiple iNIF users in party
+- Still respects the core principle: "Wait for EVERYONE to decide before auto-rolling"
+- Non-iNIF party members are never ignored
+
 ## Version 0.2.1 (2025-02-11)
 - Release to Github stuff...
 
