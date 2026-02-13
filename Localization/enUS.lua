@@ -100,6 +100,11 @@ L["ShowingFramesPlural"] = Msg("Showing " .. Colors.Yellow .. "%d" .. Colors.Res
 L["NoHiddenFrames"] = Msg(Colors.Yellow .. "No hidden loot frames to show" .. Colors.Reset)
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                              Combat Messages                                  │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["InCombat"] = Msg("Cannot be used in combat.")
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                          Settings Panel - Headers                              │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["SettingsSectionAddon"] = Colors.iNIF .. "Addon Settings"
@@ -150,8 +155,8 @@ L["IWROpenSettingsButton"] = "Open iWR Settings"
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                    Stub Panel (Blizzard Interface Options)                     │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
-L["StubPanelDesc"] = "Left-click the minimap button or type " .. Colors.Yellow .. "/inif settings" .. Colors.Reset .. " to open the full settings panel."
-L["StubOpenSettingsButton"] = "Open Settings"
+L["StubPanelDesc"] = "Right-click the minimap button or type " .. Colors.Yellow .. "/inif settings" .. Colors.Reset .. " to open the options panel."
+L["StubOpenSettingsButton"] = Colors.iNIF .. " Options"
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                               Startup Message                                  │
@@ -161,9 +166,32 @@ L["StartupMessage"] = "%s Classic TBC" .. Colors.Reset .. " %s Loaded."
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                                Sidebar Tabs                                    │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
-L["TabGeneral"] = "General"
-L["TabAbout"] = "About"
-L["TabIWRSettings"] = "iWR Settings"
+L["SidebarHeaderiNIF"] = Colors.iNIF .. "iNeedIfYouNeed|r"
+L["SidebarHeaderOtherAddons"] = Colors.iNIF .. "Other Addons|r"
+L["Tab1General"] = "General"
+L["Tab2About"] = "About"
+L["Tab3iWR"] = "iWR Settings"
+L["Tab3iWRPromo"] = "iWillRemember"
+L["Tab4iSP"] = "iSP Settings"
+L["Tab4iSPPromo"] = "iSoundPlayer"
+
+-- Error messages
+L["ErroriWRNotFound"] = "iWR addon not found or settings not initialized!"
+L["ErroriSPNotFound"] = "iSP addon not found or settings not initialized!"
+
+-- iWR Promo (when NOT installed)
+L["IWRPromoDesc"] = Colors.iNIF .. "iWillRemember" .. Colors.Reset .. " is a personalized player notes addon. Keep track of friends, foes, and memorable encounters. Add custom notes, assign relationship types, and share with your friends.\n\n" .. Colors.Reset .. "Enhanced TargetFrame, group warnings, chat integration, and more!"
+L["IWRPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/iwillremember"
+
+-- iSP Promo (when NOT installed)
+L["ISPPromoDesc"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " is a custom sound player addon. Play MP3/OGG files triggered by in-game events - login, level up, achievements, kills, and more!\n\n" .. Colors.Reset .. "40+ event triggers, PvP multi-kill tracking, looping support, and advanced sound options."
+L["ISPPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/isoundplayer"
+
+-- iSP Settings (when installed)
+L["SettingsSectionISP"] = Colors.iNIF .. "iSoundPlayer Settings"
+L["ISPInstalledDesc1"] = "iSoundPlayer is installed!"
+L["ISPInstalledDesc2"] = "Click the button below to open iSoundPlayer settings."
+L["ISPOpenSettingsButton"] = "Open iSP Settings"
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                      Menu Panel (Minimap Right-Click)                          │

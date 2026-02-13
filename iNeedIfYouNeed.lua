@@ -61,6 +61,33 @@ local Colors = {
 local activeRolls = {} -- Track active loot rolls
 local eventFrame = CreateFrame("Frame")
 local timerWindow = nil -- Timer display window
+local InCombat = false -- Combat state flag
+
+-- ═══════════════════════════════════════════════════════════
+-- COMBAT STATE HANDLING
+-- ═══════════════════════════════════════════════════════════
+local combatEventFrame = CreateFrame("Frame")
+combatEventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+combatEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+combatEventFrame:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then
+        InCombat = true
+
+        -- Auto-hide settings frames on combat enter
+        if iNIF.SettingsFrame and iNIF.SettingsFrame:IsShown() then
+            iNIF.SettingsFrame:Hide()
+        end
+
+        local menuPanel = _G["iNIFMenuPanel"]
+        if menuPanel and menuPanel:IsShown() then
+            menuPanel:Hide()
+        end
+
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        InCombat = false
+    end
+end)
 
 -- Global checkbox registry for live updates
 iNIF.CheckboxRegistry = {
@@ -1080,17 +1107,11 @@ local function CreateOptionsPanel()
     local generalContainer, generalContent = CreateTabContent()
     local aboutContainer, aboutContent = CreateTabContent()
 
-    -- Check if iWR is installed
-    local iWRInstalled = iWR ~= nil
-    local iWRContainer, iWRContent
-    if iWRInstalled then
-        iWRContainer, iWRContent = CreateTabContent()
-    end
+    -- ALWAYS create addon tabs (detection deferred to OnShow hook)
+    local iWRContainer, iWRContent = CreateTabContent()
+    local iSPContainer, iSPContent = CreateTabContent()
 
-    local tabContents = {generalContainer, aboutContainer}
-    if iWRInstalled then
-        table.insert(tabContents, iWRContainer)
-    end
+    local tabContents = {generalContainer, aboutContainer, iWRContainer, iSPContainer}
 
     local sidebarButtons = {}
     local activeIndex = 1
@@ -1111,36 +1132,51 @@ local function CreateOptionsPanel()
         end
     end
 
-    -- Create sidebar buttons
-    local sidebarLabels = {L["TabGeneral"], L["TabAbout"]}
-    if iWRInstalled then
-        table.insert(sidebarLabels, L["TabIWRSettings"])
-    end
+    -- Build sidebar with section headers and tabs (iWR style)
+    local sidebarItems = {
+        {type = "header", label = L["SidebarHeaderiNIF"]},
+        {type = "tab", label = L["Tab1General"], index = 1},
+        {type = "tab", label = L["Tab2About"], index = 2},
+        {type = "header", label = L["SidebarHeaderOtherAddons"]},
+        {type = "tab", label = L["Tab3iWR"], index = 3},
+        {type = "tab", label = L["Tab4iSP"], index = 4},
+    }
 
-    for i, label in ipairs(sidebarLabels) do
-        local btn = CreateFrame("Button", nil, sidebar)
-        btn:SetSize(sidebarWidth - 12, 26)
-        btn:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 6, -6 - (i - 1) * 28)
+    local sidebarY = -6
+    for _, item in ipairs(sidebarItems) do
+        if item.type == "header" then
+            -- Create section header text
+            local headerText = sidebar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            headerText:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 12, sidebarY - 2)
+            headerText:SetText(item.label)
+            sidebarY = sidebarY - 20
+        else
+            -- Create tab button
+            local btn = CreateFrame("Button", nil, sidebar)
+            btn:SetSize(sidebarWidth - 12, 26)
+            btn:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 6, sidebarY)
 
-        local bg = btn:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints(btn)
-        bg:SetColorTexture(0, 0, 0, 0)
-        btn.bg = bg
+            local bg = btn:CreateTexture(nil, "BACKGROUND")
+            bg:SetAllPoints(btn)
+            bg:SetColorTexture(0, 0, 0, 0)
+            btn.bg = bg
 
-        local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        text:SetPoint("LEFT", btn, "LEFT", 10, 0)
-        text:SetText(label)
-        btn.text = text
+            local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            text:SetPoint("LEFT", btn, "LEFT", 14, 0)
+            text:SetText(item.label)
+            btn.text = text
 
-        local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-        highlight:SetAllPoints(btn)
-        highlight:SetColorTexture(1, 1, 1, 0.08)
+            local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+            highlight:SetAllPoints(btn)
+            highlight:SetColorTexture(1, 1, 1, 0.08)
 
-        btn:SetScript("OnClick", function()
-            ShowTab(i)
-        end)
+            btn:SetScript("OnClick", function()
+                ShowTab(item.index)
+            end)
 
-        sidebarButtons[i] = btn
+            table.insert(sidebarButtons, btn)
+            sidebarY = sidebarY - 28
+        end
     end
 
     -- Show first tab by default
@@ -1267,35 +1303,120 @@ local function CreateOptionsPanel()
     scrollChildren[2]:SetHeight(math.abs(y) + 20)
 
     -- ═══════════════════════════════════════════════════════════
-    -- iWR SETTINGS TAB (if installed)
+    -- iWR SETTINGS TAB (dual-frame pattern for deferred detection)
     -- ═══════════════════════════════════════════════════════════
-    if iWRInstalled and iWRContent then
-        y = -10
 
-        _, y = CreateSectionHeader(iWRContent, L["SettingsSectionIWR"], y)
+    -- Create INSTALLED variant frame (always created, hidden initially)
+    local iWRInstalledFrame = CreateFrame("Frame", nil, iWRContent)
+    iWRInstalledFrame:SetAllPoints(iWRContent)
+    iWRInstalledFrame:Hide()
 
-        local iWRInfo
-        iWRInfo, y = CreateInfoText(iWRContent,
-            L["IWRInstalledDesc1"] .. "\n\n" .. L["IWRInstalledDesc2"],
-            y, "GameFontHighlight")
+    y = -10
+    _, y = CreateSectionHeader(iWRInstalledFrame, L["SettingsSectionIWR"], y)
 
-        y = y - 10
+    local iWRDesc
+    iWRDesc, y = CreateInfoText(iWRInstalledFrame,
+        L["IWRInstalledDesc1"] .. "\n\n" .. L["IWRInstalledDesc2"],
+        y, "GameFontHighlight")
 
-        -- Open iWR Settings button
-        local iWRButton = CreateFrame("Button", nil, iWRContent, "UIPanelButtonTemplate")
-        iWRButton:SetSize(180, 28)
-        iWRButton:SetPoint("TOPLEFT", iWRContent, "TOPLEFT", 25, y)
-        iWRButton:SetText(L["IWROpenSettingsButton"])
-        iWRButton:SetScript("OnClick", function()
-            -- Open iWR's settings frame if it exists
-            if iWR and iWR.SettingsFrame then
-                settingsFrame:Hide()
-                iWR.SettingsFrame:Show()
-            end
-        end)
+    y = y - 10
 
-        scrollChildren[3]:SetHeight(math.abs(y) + 20)
-    end
+    -- Button to open iWR settings
+    local iWRButton = CreateFrame("Button", nil, iWRInstalledFrame, "UIPanelButtonTemplate")
+    iWRButton:SetSize(180, 28)
+    iWRButton:SetPoint("TOPLEFT", iWRInstalledFrame, "TOPLEFT", 25, y)
+    iWRButton:SetText(L["IWROpenSettingsButton"])
+    iWRButton:SetScript("OnClick", function()
+        -- iWR is an AceAddon global, its settings frame is on the addon object
+        local iWRFrame = _G.iWR and _G.iWR.SettingsFrame
+        if iWRFrame then
+            local point, _, relPoint, xOfs, yOfs = settingsFrame:GetPoint()
+            iWRFrame:ClearAllPoints()
+            iWRFrame:SetPoint(point, UIParent, relPoint, xOfs, yOfs)
+            settingsFrame:Hide()
+            iWRFrame:Show()
+        else
+            Print(Colors.Red .. L["ErroriWRNotFound"])
+        end
+    end)
+
+    -- Create PROMO variant frame (always created, hidden initially)
+    local iWRPromoFrame = CreateFrame("Frame", nil, iWRContent)
+    iWRPromoFrame:SetAllPoints(iWRContent)
+    iWRPromoFrame:Hide()
+
+    y = -10
+    _, y = CreateSectionHeader(iWRPromoFrame, Colors.iNIF .. "iWillRemember", y)
+
+    local iWRPromo
+    iWRPromo, y = CreateInfoText(iWRPromoFrame,
+        L["IWRPromoDesc"],
+        y, "GameFontHighlight")
+
+    y = y - 4
+
+    local iWRPromoLink
+    iWRPromoLink, y = CreateInfoText(iWRPromoFrame,
+        L["IWRPromoLink"],
+        y, "GameFontDisableSmall")
+
+    -- ═══════════════════════════════════════════════════════════
+    -- iSP SETTINGS TAB (dual-frame pattern for deferred detection)
+    -- ═══════════════════════════════════════════════════════════
+
+    -- Create INSTALLED variant frame (always created, hidden initially)
+    local iSPInstalledFrame = CreateFrame("Frame", nil, iSPContent)
+    iSPInstalledFrame:SetAllPoints(iSPContent)
+    iSPInstalledFrame:Hide()
+
+    y = -10
+    _, y = CreateSectionHeader(iSPInstalledFrame, L["SettingsSectionISP"], y)
+
+    local iSPDesc
+    iSPDesc, y = CreateInfoText(iSPInstalledFrame,
+        L["ISPInstalledDesc1"] .. "\n\n" .. L["ISPInstalledDesc2"],
+        y, "GameFontHighlight")
+
+    y = y - 10
+
+    -- Button to open iSP settings
+    local iSPButton = CreateFrame("Button", nil, iSPInstalledFrame, "UIPanelButtonTemplate")
+    iSPButton:SetSize(180, 28)
+    iSPButton:SetPoint("TOPLEFT", iSPInstalledFrame, "TOPLEFT", 25, y)
+    iSPButton:SetText(L["ISPOpenSettingsButton"])
+    iSPButton:SetScript("OnClick", function()
+        -- iSP uses local namespace, access via named frame
+        local iSPFrame = _G["iSPSettingsFrame"]
+        if iSPFrame then
+            local point, _, relPoint, xOfs, yOfs = settingsFrame:GetPoint()
+            iSPFrame:ClearAllPoints()
+            iSPFrame:SetPoint(point, UIParent, relPoint, xOfs, yOfs)
+            settingsFrame:Hide()
+            iSPFrame:Show()
+        else
+            Print(Colors.Red .. L["ErroriSPNotFound"])
+        end
+    end)
+
+    -- Create PROMO variant frame (always created, hidden initially)
+    local iSPPromoFrame = CreateFrame("Frame", nil, iSPContent)
+    iSPPromoFrame:SetAllPoints(iSPContent)
+    iSPPromoFrame:Hide()
+
+    y = -10
+    _, y = CreateSectionHeader(iSPPromoFrame, Colors.iNIF .. "iSoundPlayer", y)
+
+    local iSPPromo
+    iSPPromo, y = CreateInfoText(iSPPromoFrame,
+        L["ISPPromoDesc"],
+        y, "GameFontHighlight")
+
+    y = y - 4
+
+    local iSPPromoLink
+    iSPPromoLink, y = CreateInfoText(iSPPromoFrame,
+        L["ISPPromoLink"],
+        y, "GameFontDisableSmall")
 
     -- ═══════════════════════════════════════════════════════════
     -- STUB PANEL FOR BLIZZARD INTERFACE OPTIONS
@@ -1327,12 +1448,39 @@ local function CreateOptionsPanel()
     -- Store reference for opening from minimap/slash
     iNIF.SettingsFrame = settingsFrame
 
-    -- Refresh checkboxes when shown
+    -- Refresh checkboxes and toggle addon frames when shown
     settingsFrame:HookScript("OnShow", function()
+        -- Close other addon settings panels
+        local iSPFrame = _G["iSPSettingsFrame"]
+        if iSPFrame and iSPFrame:IsShown() then iSPFrame:Hide() end
+
+        local iWRFrame = _G.iWR and _G.iWR.SettingsFrame
+        if iWRFrame and iWRFrame:IsShown() then iWRFrame:Hide() end
+
+        -- Refresh checkboxes
         for key, cb in pairs(checkboxRefs) do
             if iNIFDB[key] ~= nil then
                 cb:SetChecked(iNIFDB[key])
             end
+        end
+
+        -- Deferred addon detection (guaranteed loaded by now)
+        local iWRLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iWillRemember")
+        iWRInstalledFrame:SetShown(iWRLoaded)
+        iWRPromoFrame:SetShown(not iWRLoaded)
+
+        -- Update iWR sidebar button text
+        if sidebarButtons[3] then
+            sidebarButtons[3].text:SetText(iWRLoaded and L["Tab3iWR"] or L["Tab3iWRPromo"])
+        end
+
+        local iSPLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iSoundPlayer")
+        iSPInstalledFrame:SetShown(iSPLoaded)
+        iSPPromoFrame:SetShown(not iSPLoaded)
+
+        -- Update iSP sidebar button text
+        if sidebarButtons[4] then
+            sidebarButtons[4].text:SetText(iSPLoaded and L["Tab4iSP"] or L["Tab4iSPPromo"])
         end
     end)
 
@@ -1715,6 +1863,7 @@ settingsButton:SetSize(120, 26)
 settingsButton:SetPoint("TOPLEFT", 20, yOffset)
 settingsButton:SetText(L["MenuFullSettings"])
 settingsButton:SetScript("OnClick", function()
+    if InCombat then print(L["InCombat"]) return end
     iNIFMenuPanel:Hide()
     if iNIF.SettingsFrame then
         iNIF.SettingsFrame:Show()
@@ -1733,6 +1882,7 @@ end)
 
 -- Menu toggle functions
 local function MenuToggle()
+    if InCombat then print(L["InCombat"]) return end
     if iNIFMenuPanel:IsVisible() then
         iNIFMenuPanel:Hide()
     else
@@ -1745,6 +1895,7 @@ local function MenuClose()
 end
 
 local function MenuOpen()
+    if InCombat then print(L["InCombat"]) return end
     iNIFMenuPanel:Show()
 end
 
@@ -1788,6 +1939,7 @@ if LDBroker and LDBIcon then
                 end
             elseif button == "RightButton" then
                 -- Open custom settings frame
+                if InCombat then print(L["InCombat"]) return end
                 if iNIF.SettingsFrame then
                     iNIF.SettingsFrame:Show()
                 end
@@ -1818,6 +1970,7 @@ SlashCmdList["iNIF"] = function(msg)
 
     if msg == "config" or msg == "settings" or msg == "options" then
         -- Open custom settings frame
+        if InCombat then print(L["InCombat"]) return end
         if iNIF.SettingsFrame then
             iNIF.SettingsFrame:Show()
         end

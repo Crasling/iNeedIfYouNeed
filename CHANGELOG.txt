@@ -1,5 +1,56 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.3.1
+
+### Version bump
+
+## Version 0.2.7
+
+### Combat Protection
+- Added combat state tracking (PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED)
+- Settings panel and menu auto-hide when entering combat
+- Blocked opening settings/menu during combat with chat message
+- Added L["InCombat"] locale key
+
+## Version 0.2.6
+
+### Localization
+- Moved all hardcoded sidebar headers and Other Addons labels to locale tags
+- Added L["SidebarHeaderiNIF"], L["SidebarHeaderOtherAddons"], L["Tab3iWRPromo"], L["Tab4iSPPromo"]
+
+## Version 0.2.5
+
+### Bug Fixes
+- **iWR Settings Button**: Fixed button not opening iWR settings (was looking for wrong frame name, now uses AceAddon global)
+- **iSP Settings Button**: Fixed button not opening iSP settings (was referencing local namespace, now uses named global frame)
+- **Sidebar Dynamic Text**: Added dynamic sidebar button text updates on show (shows "iWR Settings"/"iSP Settings" when installed, full addon name when not)
+- **Cross-Addon Close**: Opening iNIF settings now auto-closes iWR/iSP settings panels if open
+
+## Version 0.2.3 (2025-02-11)
+
+### UI Improvements
+- **Settings Panel**: Added iWR-style section headers to sidebar navigation
+  - "iNeedIfYouNeed" header groups General and About tabs
+  - "Other Addons" header ALWAYS visible (groups addon integration tabs)
+  - iWR Settings tab ALWAYS visible with dynamic content
+  - **iSP Settings tab ALWAYS visible with dynamic content (NEW)**
+- **iWR Integration**:
+  - When installed: Button to open iWR settings at same position, closes iNIF
+  - When NOT installed: Shows promo text and CurseForge link
+- **iSP Integration (NEW)**:
+  - When installed: Button to open iSP settings at same position, closes iNIF
+  - When NOT installed: Shows promo text about sound player features and CurseForge link
+- **Visual Consistency**: Matches iWillRemember addon's settings panel design
+- **Stub Panel**: Updated text to match iWR style ("Right-click", "Options")
+
+### Technical Details
+- Sidebar now supports both "header" and "tab" item types
+- Dynamic addon detection using C_AddOns.IsAddOnLoaded (iWR, iSP)
+- Position synchronization between iNIF and other addon settings frames
+- Conditional content rendering based on installation status
+- All addon tabs always created (not conditional anymore)
+- Headers use iNIF orange color (#ff9716) with GameFontNormalSmall font
+
 ## Version 0.2.2 (2025-02-11)
 
 ### Critical Bug Fixes
