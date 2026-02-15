@@ -45,7 +45,7 @@ end})
 
 -- Helper function for consistent message formatting
 local function Msg(message)
-    return Colors.iNIF .. "[iNIF]: " .. Colors.Reset .. message
+    return Colors.iNIF .. "[iNIF]: " .. message
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
@@ -68,6 +68,8 @@ L["MonitorWindowHidden"] = "Monitor window hidden. Re-enable debug mode to show 
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["CheckboxTooltipTitle"] = "Need if someone needs"
 L["CheckboxTooltipDesc"] = "When greeding: Automatically roll Need if someone else rolls Need, otherwise Greed at the end of the timer."
+L["CheckboxTooltipTitleEnchanter"] = "Need for disenchant"
+L["CheckboxTooltipDescEnchanter"] = "Enchanter Mode: Automatically roll Need if nobody else needs this item. Announces to party/raid."
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                            Chat Messages (Actions)                             │
@@ -78,6 +80,7 @@ L["ChatRollingNeed"] = Colors.Red .. "Rolled NEED" .. Colors.Reset
 L["ChatBecauseNeeded"] = " on %s because " .. Colors.Yellow .. "%s" .. Colors.Reset .. " needed it"
 L["ChatPartyAutoNeed"] = "[iNIF]: Automatically needed on %s because %s needed."
 L["ChatMonitoring"] = Colors.iNIF .. "Monitoring %s... Will Need if someone Needs, otherwise Greed at end of timer."
+L["ChatMonitoringEnchanter"] = Colors.iNIF .. "Monitoring %s... Will Need for disenchant if nobody else Needs."
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                            Minimap Button Tooltip                              │
@@ -91,6 +94,7 @@ L["TooltipOpenSettings"] = "Open settings"
 L["TooltipStatus"] = Colors.Yellow .. "Status: " .. Colors.Reset
 L["StatusEnabled"] = Colors.Green .. "Smart looting activated" .. Colors.Reset
 L["StatusDisabled"] = Colors.Red .. "Smart looting deactivated" .. Colors.Reset
+L["StatusEnchanterMode"] = "|cFFAA55FF" .. "Smart disenchanter activated" .. Colors.Reset
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                         Minimap Button Click Actions                           │
@@ -103,6 +107,7 @@ L["NoHiddenFrames"] = Msg(Colors.Yellow .. "No hidden loot frames to show" .. Co
 -- │                              Combat Messages                                  │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["InCombat"] = Msg("Cannot be used in combat.")
+L["EnchanterModeActiveRoll"] = Msg("Cannot toggle Enchanter Mode during an active roll.")
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                          Settings Panel - Headers                              │
@@ -126,6 +131,17 @@ L["SettingsHideLootFrame"] = "Hide Loot Frame After Greed+Checkbox"
 L["SettingsHideLootFrameDesc"] = Colors.Gray .. "Hide Blizzard's loot frame (Need/Greed/Pass window) after clicking Greed with checkbox enabled." .. Colors.Reset
 L["SettingsHideMonitor"] = "Hide Monitor Window After Greed+Checkbox"
 L["SettingsHideMonitorDesc"] = Colors.Gray .. "Hide the Active Rolls monitor window after clicking Greed with checkbox enabled." .. Colors.Reset
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                       Settings Panel - Enchanter Mode                         │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["SettingsSectionEnchanterMode"] = Colors.iNIF .. "Enchanter Mode"
+L["SettingsEnchanterMode"] = "Enable Enchanter Mode"
+L["SettingsEnchanterModeDesc"] = Colors.Gray .. "When enabled with checkbox checked: Need on items that nobody else needs (for disenchanting). Inverts normal iNIF behavior. Announces to party/raid for full transparency." .. Colors.Reset
+L["EnchanterModeLabel"] = "Enchanter Mode"
+L["EnchanterModeNeeded"] = Colors.Green .. "Enchanter Mode: " .. Colors.Reset .. "Needing "
+L["EnchanterModePartyMsg"] = "[iNIF]: Needing %s for disenchant (Enchanter Mode)"
+L["SlashEnchanterMode"] = "Enchanter Mode: "
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                         Settings Panel - About Tab                             │
@@ -189,8 +205,8 @@ L["ISPPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/a
 
 -- iSP Settings (when installed)
 L["SettingsSectionISP"] = Colors.iNIF .. "iSoundPlayer Settings"
-L["ISPInstalledDesc1"] = "iSoundPlayer is installed!"
-L["ISPInstalledDesc2"] = "Click the button below to open iSoundPlayer settings."
+L["ISPInstalledDesc1"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " is installed! You can access iSP settings from here."
+L["ISPInstalledDesc2"] = Colors.Gray .. "Note: These settings are managed by iSP and will affect the iSP addon." .. Colors.Reset
 L["ISPOpenSettingsButton"] = "Open iSP Settings"
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
@@ -224,6 +240,7 @@ L["SlashHelpToggle"] = Colors.Yellow .. "/inif toggle" .. Colors.Reset .. " - En
 L["SlashHelpNotifications"] = Colors.Yellow .. "/inif notifications" .. Colors.Reset .. " - Toggle chat notifications"
 L["SlashHelpParty"] = Colors.Yellow .. "/inif party" .. Colors.Reset .. " - Toggle party/raid announcements"
 L["SlashHelpRemember"] = Colors.Yellow .. "/inif remember" .. Colors.Reset .. " - Toggle checkbox state memory"
+L["SlashHelpEnchanter"] = Colors.Yellow .. "/inif enchanter" .. Colors.Reset .. " - Toggle Enchanter Mode (Need for disenchant)"
 L["SlashHelpDebug"] = Colors.Yellow .. "/inif debug" .. Colors.Reset .. " - Toggle debug mode"
 L["SlashHelpTest"] = Colors.Yellow .. "/inif test" .. Colors.Reset .. " - Show addon status and active rolls"
 L["SlashHelpTestComm"] = Colors.Yellow .. "/inif testcomm" .. Colors.Reset .. " - Test AceComm message reception (requires active monitored roll)"

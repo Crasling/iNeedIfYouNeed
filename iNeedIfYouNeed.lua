@@ -28,6 +28,7 @@ if not iNIFDB then
         debug = false,
         hideLootFrame = true,  -- Hide Blizzard loot frame (GroupLootFrame) after Greed+Checkbox
         hideMonitorWindow = true, -- Hide monitor window (Active Rolls timer) after Greed+Checkbox
+        enchanterMode = false, -- Enchanter Mode: Need items nobody else needs (for disenchant)
         minimapButton = {
             hide = false,
             minimapPos = -30
@@ -96,6 +97,7 @@ iNIF.CheckboxRegistry = {
     partyMessages = {},
     hideLootFrame = {},
     hideMonitorWindow = {},
+    enchanterMode = {},
     debug = {}
 }
 
@@ -283,6 +285,16 @@ local function CountTable(tbl)
     return count
 end
 
+-- Check if any loot roll is still active (not yet processed)
+local function HasActiveRolls()
+    for _, roll in pairs(activeRolls) do
+        if not roll.processed then
+            return true
+        end
+    end
+    return false
+end
+
 -- ═══════════════════════════════════════════════════════════
 -- CHECKBOX CREATION
 -- ═══════════════════════════════════════════════════════════
@@ -302,40 +314,54 @@ local function CreateCheckbox(parent, rollID)
     bg:SetVertexColor(0, 0, 0, 0)  -- Fully transparent (no visible background)
     checkbox.bg = bg
 
-    -- Add small Need icon (dice) - top-left inside
+    -- Need icon (dice) - top-left inside (always visible)
     local needIcon = checkbox:CreateTexture(nil, "ARTWORK")
-    needIcon:SetTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Up")  -- Need button texture
-    needIcon:SetSize(14, 14)  -- Slightly smaller to fit nicely inside
-    needIcon:SetPoint("TOPLEFT", checkbox, "TOPLEFT", 2, -2)  -- Inside (positive X, negative Y)
-    needIcon:SetAlpha(0.8)  -- Slightly more visible
+    needIcon:SetTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Up")
+    needIcon:SetSize(14, 14)
+    needIcon:SetPoint("TOPLEFT", checkbox, "TOPLEFT", 2, -2)
+    needIcon:SetAlpha(0.8)
     checkbox.needIcon = needIcon
 
-    -- Add small Greed icon (coin) - bottom-right inside the border
+    -- Greed icon (coin) - bottom-right inside (always visible)
     local greedIcon = checkbox:CreateTexture(nil, "ARTWORK")
-    greedIcon:SetTexture("Interface\\Buttons\\UI-GroupLoot-Coin-Up")  -- Greed button texture
-    greedIcon:SetSize(14, 14)  -- Slightly smaller to fit nicely inside
-    greedIcon:SetPoint("BOTTOMRIGHT", checkbox, "BOTTOMRIGHT", -2, 2)  -- Inside (negative X, positive Y)
-    greedIcon:SetAlpha(0.8)  -- Slightly more visible
+    greedIcon:SetTexture("Interface\\Buttons\\UI-GroupLoot-Coin-Up")
+    greedIcon:SetSize(14, 14)
+    greedIcon:SetPoint("BOTTOMRIGHT", checkbox, "BOTTOMRIGHT", -2, 2)
+    greedIcon:SetAlpha(0.8)
     checkbox.greedIcon = greedIcon
+
+    -- Disenchant overlay - centered, 50% opacity (only visible in Enchanter Mode)
+    local deOverlay = checkbox:CreateTexture(nil, "OVERLAY")
+    deOverlay:SetTexture("Interface\\Icons\\INV_Enchant_Disenchant")
+    deOverlay:SetSize(16, 16)
+    deOverlay:SetPoint("CENTER", checkbox, "CENTER", 0, 0)
+    deOverlay:SetAlpha(0.5)
+    deOverlay:SetShown(iNIFDB.enchanterMode)
+    checkbox.deOverlay = deOverlay
+
+    -- Update visuals based on mode
+    local function UpdateCheckboxMode()
+        deOverlay:SetShown(iNIFDB.enchanterMode)
+    end
+    checkbox.UpdateMode = UpdateCheckboxMode
 
     -- Set initial state - default unchecked
     checkbox:SetChecked(false)
 
     -- Add hover effect and tooltip
     checkbox:SetScript("OnEnter", function(self)
-        -- No background color change on hover (background is transparent)
-
-        -- Show tooltip
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L["CheckboxTooltipTitle"], 1, 1, 1, 1, true)
-        GameTooltip:AddLine(L["CheckboxTooltipDesc"], nil, nil, nil, true)
+        if iNIFDB.enchanterMode then
+            GameTooltip:SetText(L["CheckboxTooltipTitleEnchanter"], 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L["CheckboxTooltipDescEnchanter"], nil, nil, nil, true)
+        else
+            GameTooltip:SetText(L["CheckboxTooltipTitle"], 1, 1, 1, 1, true)
+            GameTooltip:AddLine(L["CheckboxTooltipDesc"], nil, nil, nil, true)
+        end
         GameTooltip:Show()
     end)
 
     checkbox:SetScript("OnLeave", function(self)
-        -- No background color change (background is transparent)
-
-        -- Hide tooltip
         GameTooltip:Hide()
     end)
 
@@ -441,6 +467,17 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
         if roll.checkboxEnabled and roll.greedClicked then
             CheckIfAllINIFGreeded(rollID)
         end
+
+    elseif msgType == "ENCHANTER_MODE" then
+        local rollID = tonumber(rollIDStr)
+        if not rollID then return end
+
+        local roll = activeRolls[rollID]
+        if not roll or roll.processed then return end
+
+        -- Track that another iNIF user is using Enchanter Mode on this roll
+        roll.enchanterNeedSent = true -- Prevent us from also needing for disenchant
+        Debug("Received ENCHANTER_MODE from " .. sender .. " for rollID: " .. rollID .. " - skipping our enchanter need", 3)
     end
 end
 
@@ -451,22 +488,9 @@ local function CheckIfAllGreeded(rollID)
         return false
     end
 
-    -- Count how many party members there are (excluding ourselves)
-    -- Use GetNumGroupMembers for MoP+, fallback to GetNumRaidMembers/GetNumPartyMembers for older versions
-    local partySize = 0
-    if IsInRaid() then
-        if GetNumGroupMembers then
-            partySize = GetNumGroupMembers() - 1  -- MoP+ (includes self)
-        else
-            partySize = GetNumRaidMembers()  -- Classic/TBC/Wrath (excludes self)
-        end
-    elseif IsInGroup() then
-        if GetNumGroupMembers then
-            partySize = GetNumGroupMembers() - 1  -- MoP+ (includes self)
-        else
-            partySize = GetNumPartyMembers()  -- Classic/TBC/Wrath (excludes self)
-        end
-    end
+    -- Use the eligible count captured at START_LOOT_ROLL (only connected + visible players)
+    -- This avoids counting players who are offline or in a different zone
+    local partySize = roll.eligibleCount or 0
 
     -- Count how many have greeded (from CHAT_MSG_LOOT)
     local greedCount = 0
@@ -549,6 +573,71 @@ local function CheckIfAllINIFGreeded(rollID)
 end
 
 -- ═══════════════════════════════════════════════════════════
+-- ENCHANTER MODE
+-- ═══════════════════════════════════════════════════════════
+local function CheckEnchanterMode(rollID)
+    local roll = activeRolls[rollID]
+    if not roll or roll.processed then return end
+    if not iNIFDB.enchanterMode then return end
+    if not iNIFDB.enabled then return end
+
+    -- Require checkbox + greed click (same as normal iNIF)
+    if not roll.checkboxEnabled or not roll.greedClicked then return end
+
+    -- Don't act if someone needed
+    if roll.needDetected then return end
+
+    -- Use the eligible count captured at START_LOOT_ROLL (only connected + visible players)
+    local partySize = roll.eligibleCount or 0
+
+    local greedCount = CountTable(roll.greedRolls)
+    local passCount = CountTable(roll.passRolls)
+
+    -- Count iNIF users (avoid double-counting)
+    local iNIFGreedCount = 0
+    if roll.iNIFGreeds then
+        for playerName, _ in pairs(roll.iNIFGreeds) do
+            if not roll.greedRolls[playerName] then
+                iNIFGreedCount = iNIFGreedCount + 1
+            end
+        end
+    end
+
+    local decidedCount = greedCount + iNIFGreedCount + passCount
+
+    Debug("Enchanter Mode check: " .. decidedCount .. "/" .. partySize .. " decided, needDetected=" .. tostring(roll.needDetected) .. ", quality=" .. tostring(roll.itemQuality))
+
+    if partySize > 0 and decidedCount >= partySize then
+        -- Everyone decided, nobody needed → Need for disenchant!
+        roll.processed = true
+        roll.enchanterNeedSent = true
+        RollOnLoot(rollID, 1) -- 1 = Need
+
+        -- Send AceComm notification to other iNIF users
+        if AceComm and (IsInGroup() or IsInRaid()) then
+            local distribution = IsInRaid() and "RAID" or "PARTY"
+            local message = "ENCHANTER_MODE|" .. rollID .. "|" .. roll.itemLink
+            iNIF:SendCommMessage("iNIF", message, distribution, nil, "NORMAL")
+        end
+
+        -- Chat notification
+        local itemLink = roll.itemLink
+        C_Timer.After(0.5, function()
+            Print(L["EnchanterModeNeeded"] .. itemLink)
+        end)
+
+        -- Party/Raid announcement (FORCED — always announce enchanter needs for transparency)
+        if IsInGroup() or IsInRaid() then
+            local channel = IsInRaid() and "RAID" or "PARTY"
+            local capturedItemLink = roll.itemLink
+            C_Timer.After(0.5, function()
+                SendChatMessage(string.format(L["EnchanterModePartyMsg"], capturedItemLink), channel)
+            end)
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
 -- LOOT ROLL FRAME ENHANCEMENT
 -- ═══════════════════════════════════════════════════════════
 local function EnhanceRollFrame(frame, rollID)
@@ -573,6 +662,15 @@ local function EnhanceRollFrame(frame, rollID)
     local checkbox = CreateCheckbox(frame, rollID)
     frame.iNIF_Checkbox = checkbox
     frame.iNIF_Enhanced = true
+
+    -- Enchanter Mode label (purple text, black border, centered top)
+    local enchanterLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    enchanterLabel:SetPoint("TOP", frame, "TOP", 0, -4)
+    enchanterLabel:SetText("|cFFAA55FF" .. L["EnchanterModeLabel"] .. "|r")
+    enchanterLabel:SetShadowOffset(2, -2)
+    enchanterLabel:SetShadowColor(0, 0, 0, 1)
+    enchanterLabel:SetShown(iNIFDB.enchanterMode)
+    frame.iNIF_EnchanterLabel = enchanterLabel
 
     -- Store original Greed button click handler
     local greedButton = frame.GreedButton or frame.greedButton
@@ -606,7 +704,7 @@ local function EnhanceRollFrame(frame, rollID)
                 -- If roll doesn't exist, create it now (fallback for missed START_LOOT_ROLL)
                 if not roll then
                     Debug("Creating missing roll entry for rollID: " .. currentRollID, 2) -- WARNING
-                    local texture, name = GetLootRollItemInfo(currentRollID)
+                    local texture, name, count, quality = GetLootRollItemInfo(currentRollID)
                     local itemLink = GetLootRollItemLink(currentRollID)
 
                     activeRolls[currentRollID] = {
@@ -616,12 +714,14 @@ local function EnhanceRollFrame(frame, rollID)
                         neededBy = nil,
                         processed = false,
                         itemLink = itemLink or name or "Unknown Item",
+                        itemQuality = quality or 0,
                         checkboxEnabled = false,
                         greedClicked = false,
                         greedRolls = {},
                         passRolls = {},
                         iNIFGreeds = {},
                         iNIFCommSent = false,
+                        enchanterNeedSent = false,
                         ourDecisionTime = nil  -- Time when WE clicked Greed+checkbox
                     }
                     roll = activeRolls[currentRollID]
@@ -656,7 +756,8 @@ local function EnhanceRollFrame(frame, rollID)
                     end
 
                     -- Check if someone already needed BEFORE we clicked Greed+Checkbox
-                    if roll.needDetected and roll.neededBy then
+                    -- In Enchanter Mode (green+ only): someone needed → skip (don't need back)
+                    if roll.needDetected and roll.neededBy and not iNIFDB.enchanterMode then
                         Debug("Someone already needed this item before Greed+Checkbox: " .. roll.neededBy)
                         -- Roll Need immediately
                         RollOnLoot(currentRollID, 1) -- 1 = Need
@@ -690,10 +791,18 @@ local function EnhanceRollFrame(frame, rollID)
                     if not iNIFDB.debug and iNIFDB.hideLootFrame then
                         frame:Hide()
                     end
-                    Print(string.format(L["ChatMonitoring"], roll.itemLink))
+                    if iNIFDB.enchanterMode then
+                        Print(string.format(L["ChatMonitoringEnchanter"], roll.itemLink))
+                    else
+                        Print(string.format(L["ChatMonitoring"], roll.itemLink))
+                    end
 
                     -- Check if everyone has already greeded (handles late Greed+checkbox click)
-                    CheckIfAllGreeded(currentRollID)
+                    if iNIFDB.enchanterMode then
+                        CheckEnchanterMode(currentRollID)
+                    else
+                        CheckIfAllGreeded(currentRollID)
+                    end
 
                     -- DON'T call the original handler - we handle the roll later
                     return
@@ -732,6 +841,12 @@ local function OnNeedDetected(playerName, itemLink)
                     Debug("Need from OTHER PLAYER: " .. playerName)
                     roll.needDetected = true
                     roll.neededBy = playerName
+
+                    -- Enchanter Mode: someone needs → skip (don't need back, let them have it)
+                    if iNIFDB.enchanterMode then
+                        Debug("Enchanter Mode: someone needed, skipping this item")
+                        return
+                    end
 
                     -- Only auto-roll if checkbox is already enabled
                     if roll.checkboxEnabled and roll.greedClicked then
@@ -793,9 +908,13 @@ local function OnGreedDetected(playerName, itemLink)
                     roll.greedRolls[playerName] = true
                     Debug("Tracked Greed from " .. playerName .. " for rollID " .. rollID)
 
-                    -- Only check if everyone greeded if we're actively monitoring
+                    -- Only check if everyone greeded/decided if we're actively monitoring
                     if roll.checkboxEnabled and roll.greedClicked then
-                        CheckIfAllGreeded(rollID)
+                        if iNIFDB.enchanterMode then
+                            CheckEnchanterMode(rollID)
+                        else
+                            CheckIfAllGreeded(rollID)
+                        end
                     end
                     return
                 end
@@ -829,7 +948,11 @@ local function OnPassDetected(playerName, itemLink)
 
                     -- Only check if everyone decided if we're actively monitoring
                     if roll.checkboxEnabled and roll.greedClicked then
-                        CheckIfAllGreeded(rollID)
+                        if iNIFDB.enchanterMode then
+                            CheckEnchanterMode(rollID)
+                        else
+                            CheckIfAllGreeded(rollID)
+                        end
                     end
                     return
                 else
@@ -859,18 +982,36 @@ local function OnUpdate(self, elapsed)
         if not roll.processed then
             -- Check if everyone has decided (periodic check to catch delayed chat events OR iNIF comm messages)
             if roll.checkboxEnabled and roll.greedClicked then
-                CheckIfAllGreeded(rollID)
-                CheckIfAllINIFGreeded(rollID)
+                if iNIFDB.enchanterMode then
+                    -- Enchanter Mode: Need if everyone decided and nobody needed
+                    if not roll.enchanterNeedSent then
+                        CheckEnchanterMode(rollID)
+                    end
+                else
+                    -- Normal iNIF (or Enchanter Mode with quality < green): Greed if everyone decided, Need if someone needed
+                    CheckIfAllGreeded(rollID)
+                    CheckIfAllINIFGreeded(rollID)
+                end
             end
 
             -- Calculate elapsed time since roll started
             local elapsed = currentTime - roll.startTime
             local remainingTime = roll.initialDuration - elapsed
 
-            -- When 2 seconds or less remaining, process the roll (if checkbox enabled)
+            -- Timer fallback at 2 seconds remaining
             if remainingTime <= 2 and roll.checkboxEnabled and roll.greedClicked then
-                Debug("Timer reached 2 seconds for rollID: " .. rollID .. " (remaining: " .. string.format("%.1f", remainingTime) .. "s)")
-                ProcessRoll(rollID)
+                if iNIFDB.enchanterMode then
+                    -- Enchanter Mode: Need for disenchant if nobody needed
+                    if not roll.enchanterNeedSent and not roll.needDetected and not roll.processed then
+                        Debug("Enchanter Mode timer fallback for rollID: " .. rollID)
+                        CheckEnchanterMode(rollID)
+                    end
+                else
+                    -- Normal iNIF (or Enchanter Mode with quality < green): Greed (nobody needed)
+                    Debug("Timer reached 2 seconds for rollID: " .. rollID .. " (remaining: " .. string.format("%.1f", remainingTime) .. "s)")
+                    ProcessRoll(rollID)
+                end
+
             elseif remainingTime < 0 then
                 -- Roll expired - clean up to prevent memory leak
                 Debug("Roll expired for rollID: " .. rollID .. (roll.checkboxEnabled and " (was being monitored)" or " (not monitored)"))
@@ -1217,6 +1358,58 @@ local function CreateOptionsPanel()
         L["SettingsHideMonitorDesc"], y, "hideMonitorWindow")
     checkboxRefs.hideMonitorWindow = cbHideMonitorWindow
 
+    -- Enchanter Mode section
+    y = y - 10
+    _, y = CreateSectionHeader(generalContent, L["SettingsSectionEnchanterMode"], y)
+
+    local cbEnchanter
+    cbEnchanter, y = CreateSettingsCheckbox(generalContent, L["SettingsEnchanterMode"],
+        L["SettingsEnchanterModeDesc"], y, "enchanterMode")
+    checkboxRefs.enchanterMode = cbEnchanter
+
+    -- Override OnClick: block toggle during active rolls
+    cbEnchanter:SetScript("OnClick", function(self)
+        if HasActiveRolls() then
+            -- Revert the check state and block
+            self:SetChecked(iNIFDB.enchanterMode)
+            Print(L["EnchanterModeActiveRoll"])
+            return
+        end
+        local checked = self:GetChecked() and true or false
+        iNIFDB.enchanterMode = checked
+        Debug(L["SettingsEnchanterMode"] .. " " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+        UpdateAllCheckboxes("enchanterMode", checked)
+    end)
+
+    -- Grey out checkbox when rolls are active (poll on show/update)
+    local enchanterTicker = nil
+    local function UpdateEnchanterCheckboxState()
+        local hasRolls = HasActiveRolls()
+        if hasRolls then
+            cbEnchanter:SetAlpha(0.4)
+            cbEnchanter:SetEnabled(false)
+            cbEnchanter.Text:SetTextColor(0.5, 0.5, 0.5)
+        else
+            cbEnchanter:SetAlpha(1.0)
+            cbEnchanter:SetEnabled(true)
+            cbEnchanter.Text:SetTextColor(1, 1, 1)
+        end
+    end
+
+    -- Start/stop polling when settings opens/closes
+    settingsFrame:HookScript("OnShow", function()
+        UpdateEnchanterCheckboxState()
+        if not enchanterTicker then
+            enchanterTicker = C_Timer.NewTicker(0.5, UpdateEnchanterCheckboxState)
+        end
+    end)
+    settingsFrame:HookScript("OnHide", function()
+        if enchanterTicker then
+            enchanterTicker:Cancel()
+            enchanterTicker = nil
+        end
+    end)
+
     scrollChildren[1]:SetHeight(math.abs(y) + 20)
 
     -- ═══════════════════════════════════════════════════════════
@@ -1542,10 +1735,33 @@ local function OnEvent(self, event, ...)
         end
 
         -- Get item info immediately
-        local texture, name = GetLootRollItemInfo(rollID)
+        local texture, name, count, quality = GetLootRollItemInfo(rollID)
         local itemLink = GetLootRollItemLink(rollID)
 
-        Debug("START_LOOT_ROLL got item info: name=" .. tostring(name) .. ", itemLink=" .. tostring(itemLink))
+        Debug("START_LOOT_ROLL got item info: name=" .. tostring(name) .. ", itemLink=" .. tostring(itemLink) .. ", quality=" .. tostring(quality))
+
+        -- Count eligible players (connected + visible = in the dungeon/nearby)
+        -- Players who are offline or in a different zone won't roll, so don't count them
+        local eligibleCount = 0
+        local totalMembers = GetNumGroupMembers and GetNumGroupMembers() or (IsInRaid() and GetNumRaidMembers() or (GetNumPartyMembers() + 1))
+        for i = 1, totalMembers do
+            local unitID
+            if IsInRaid() then
+                unitID = "raid" .. i
+            else
+                if i < totalMembers then
+                    unitID = "party" .. i
+                else
+                    unitID = "player"
+                end
+            end
+            if unitID ~= "player" and not UnitIsUnit(unitID, "player") then
+                if UnitExists(unitID) and UnitIsConnected(unitID) and UnitIsVisible(unitID) then
+                    eligibleCount = eligibleCount + 1
+                end
+            end
+        end
+        Debug("Eligible players for roll: " .. eligibleCount .. " out of " .. (totalMembers - 1) .. " group members")
 
         -- Start tracking this roll immediately with our own timer
         -- Standard loot roll duration in Classic is 60 seconds
@@ -1556,13 +1772,16 @@ local function OnEvent(self, event, ...)
             neededBy = nil,
             processed = false,
             itemLink = itemLink or name or "Unknown Item",
+            itemQuality = quality or 0,  -- 0=Poor, 1=Common, 2=Uncommon, 3=Rare, 4=Epic
             checkboxEnabled = false,  -- Will be set to true when user clicks Greed with checkbox
             greedClicked = false,     -- Track if user has clicked Greed
             greedRolls = {},          -- Track who has greeded: {playerName = true}
             passRolls = {},           -- Track who has passed: {playerName = true}
             iNIFGreeds = {},          -- Track iNIF users who greeded with checkbox: {playerName = true}
             iNIFCommSent = false,     -- Track if we sent our comm message
-            ourDecisionTime = nil      -- Time when WE clicked Greed+checkbox
+            enchanterNeedSent = false, -- Track if Enchanter Mode already Needed this item
+            ourDecisionTime = nil,     -- Time when WE clicked Greed+checkbox
+            eligibleCount = eligibleCount  -- How many players can actually roll (connected + visible)
         }
 
         Debug("Started timer for rollID: " .. rollID .. ", stored itemLink: " .. tostring(activeRolls[rollID].itemLink) .. ", duration: 60s")
@@ -1583,6 +1802,13 @@ local function OnEvent(self, event, ...)
                             -- Also update saved state if remember state is enabled
                             if iNIFDB.checkboxRememberState then
                                 iNIFDB.checkboxChecked = false
+                            end
+                            -- Update Enchanter Mode label and icons
+                            if frame.iNIF_EnchanterLabel then
+                                frame.iNIF_EnchanterLabel:SetShown(iNIFDB.enchanterMode)
+                            end
+                            if frame.iNIF_Checkbox.UpdateMode then
+                                frame.iNIF_Checkbox.UpdateMode()
                             end
                         else
                             EnhanceRollFrame(frame, rollID)
@@ -1933,7 +2159,11 @@ if LDBroker and LDBIcon then
                     -- Regular Left: Toggle enable/disable
                     iNIFDB.enabled = not iNIFDB.enabled
                     -- Show status message in chat
-                    Print(iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"])
+                    if iNIFDB.enabled and iNIFDB.enchanterMode then
+                        Print(L["StatusEnchanterMode"])
+                    else
+                        Print(iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"])
+                    end
                     -- Update all checkboxes
                     UpdateAllCheckboxes("enabled", iNIFDB.enabled)
                 end
@@ -1953,7 +2183,11 @@ if LDBroker and LDBIcon then
             tooltip:AddLine(L["TooltipRightClick"] .. L["TooltipOpenSettings"], 1, 1, 1)
             tooltip:AddLine(L["TooltipShiftLeftClick"] .. L["TooltipShowFrames"], 1, 1, 1)
             tooltip:AddLine(" ", 1, 1, 1)
-            tooltip:AddLine(L["TooltipStatus"] .. (iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"]), 1, 1, 1)
+            if iNIFDB.enchanterMode and iNIFDB.enabled then
+                tooltip:AddLine(L["TooltipStatus"] .. L["StatusEnchanterMode"], 1, 1, 1)
+            else
+                tooltip:AddLine(L["TooltipStatus"] .. (iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"]), 1, 1, 1)
+            end
             tooltip:Show()
         end,
     })
@@ -1977,7 +2211,11 @@ SlashCmdList["iNIF"] = function(msg)
 
     elseif msg == "toggle" then
         iNIFDB.enabled = not iNIFDB.enabled
-        Print(iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"])
+        if iNIFDB.enabled and iNIFDB.enchanterMode then
+            Print(L["StatusEnchanterMode"])
+        else
+            Print(iNIFDB.enabled and L["StatusEnabled"] or L["StatusDisabled"])
+        end
 
     elseif msg == "notifications" or msg == "notify" then
         iNIFDB.showNotifications = not iNIFDB.showNotifications
@@ -1990,6 +2228,15 @@ SlashCmdList["iNIF"] = function(msg)
     elseif msg == "remember" then
         iNIFDB.checkboxRememberState = not iNIFDB.checkboxRememberState
         Print(L["SlashRememberState"] .. (iNIFDB.checkboxRememberState and L["SlashEnabled"] or L["SlashDisabled"]))
+
+    elseif msg == "enchanter" or msg == "de" then
+        if HasActiveRolls() then
+            Print(L["EnchanterModeActiveRoll"])
+            return
+        end
+        iNIFDB.enchanterMode = not iNIFDB.enchanterMode
+        Print(L["SlashEnchanterMode"] .. (iNIFDB.enchanterMode and L["SlashEnabled"] or L["SlashDisabled"]))
+        UpdateAllCheckboxes("enchanterMode", iNIFDB.enchanterMode)
 
     elseif msg == "debug" then
         iNIFDB.debug = not iNIFDB.debug
@@ -2091,6 +2338,7 @@ SlashCmdList["iNIF"] = function(msg)
         print("  " .. L["SlashHelpNotifications"])
         print("  " .. L["SlashHelpParty"])
         print("  " .. L["SlashHelpRemember"])
+        print("  " .. L["SlashHelpEnchanter"])
         print("  " .. L["SlashHelpDebug"])
         print("  " .. L["SlashHelpTest"])
         print("  " .. L["SlashHelpTestComm"])

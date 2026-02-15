@@ -1,5 +1,28 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.3.1.2
+
+### Enchanter Mode Safety & Fixes
+- Blocked toggling Enchanter Mode while a loot roll is active
+- Settings checkbox greys out and becomes disabled during active rolls
+- Slash commands /inif enchanter and /inif de blocked during active rolls
+- Fixed OnGreedDetected/OnPassDetected running CheckIfAllGreeded before CheckEnchanterMode (caused Greed instead of Need)
+- Removed item quality filter — player decides which items to use Enchanter Mode on
+- Added separate monitoring message for Enchanter Mode rolls
+- Added new locale key for active roll warning message
+
+## Version 0.3.1.1
+
+### Enchanter Mode (New Feature)
+- Added Enchanter Mode: automatically Need on items that nobody else needs (for disenchanting)
+- Waits until ALL party members have decided before rolling Need
+- Full transparency: announces to party/raid chat on every enchanter Need
+- AceComm support: prevents multiple iNIF enchanters from double-needing
+- Either/or with normal iNIF mode (checkbox still required per roll)
+- New settings panel section with toggle checkbox
+- New slash commands: /inif enchanter, /inif de
+- 7 new locale keys
+
 ## Version 0.3.1
 
 ### Version bump
