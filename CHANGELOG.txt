@@ -1,5 +1,15 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.3.2.1
+
+### QuickLoot Tab (New Feature)
+- New "QuickLoot" settings tab for pre-registering item names with Need/Greed/Pass
+- Auto-rolls instantly when exact item name matches during a loot roll
+- EditBox input with Need, Greed, and Pass buttons
+- Scrollable list of rules with remove buttons and alternating row backgrounds
+- Rules persist across sessions via SavedVariables
+- Slash commands: /inif quickloot, /inif ql
+
 ## Version 0.3.1.2
 
 ### Enchanter Mode Safety & Fixes

@@ -38,9 +38,13 @@ if not iNIFDB then
             relativeTo = "CENTER",
             xOffset = 0,
             yOffset = 200
-        }
+        },
     }
 end
+
+-- Per-character saved variables
+if not iNIFCharDB then iNIFCharDB = {} end
+if not iNIFCharDB.quickLoot then iNIFCharDB.quickLoot = {} end
 
 -- ═══════════════════════════════════════════════════════════
 -- COLORS
@@ -1246,13 +1250,14 @@ local function CreateOptionsPanel()
     end
 
     local generalContainer, generalContent = CreateTabContent()
+    local quickLootContainer, quickLootContent = CreateTabContent()
     local aboutContainer, aboutContent = CreateTabContent()
 
     -- ALWAYS create addon tabs (detection deferred to OnShow hook)
     local iWRContainer, iWRContent = CreateTabContent()
     local iSPContainer, iSPContent = CreateTabContent()
 
-    local tabContents = {generalContainer, aboutContainer, iWRContainer, iSPContainer}
+    local tabContents = {generalContainer, quickLootContainer, aboutContainer, iWRContainer, iSPContainer}
 
     local sidebarButtons = {}
     local activeIndex = 1
@@ -1273,14 +1278,17 @@ local function CreateOptionsPanel()
         end
     end
 
+    iNIF.ShowTab = ShowTab
+
     -- Build sidebar with section headers and tabs (iWR style)
     local sidebarItems = {
         {type = "header", label = L["SidebarHeaderiNIF"]},
         {type = "tab", label = L["Tab1General"], index = 1},
-        {type = "tab", label = L["Tab2About"], index = 2},
+        {type = "tab", label = L["Tab2QuickLoot"], index = 2},
+        {type = "tab", label = L["Tab2About"], index = 3},
         {type = "header", label = L["SidebarHeaderOtherAddons"]},
-        {type = "tab", label = L["Tab3iWR"], index = 3},
-        {type = "tab", label = L["Tab4iSP"], index = 4},
+        {type = "tab", label = L["Tab3iWR"], index = 4},
+        {type = "tab", label = L["Tab4iSP"], index = 5},
     }
 
     local sidebarY = -6
@@ -1413,6 +1421,215 @@ local function CreateOptionsPanel()
     scrollChildren[1]:SetHeight(math.abs(y) + 20)
 
     -- ═══════════════════════════════════════════════════════════
+    -- QUICKLOOT TAB CONTENT
+    -- ═══════════════════════════════════════════════════════════
+    y = -10
+
+    _, y = CreateSectionHeader(quickLootContent, L["SettingsSectionQuickLoot"], y)
+
+    local qlDesc
+    qlDesc, y = CreateInfoText(quickLootContent, L["QuickLootDesc"], y, "GameFontHighlight")
+    y = y - 6
+
+    -- Input row: EditBox + Need/Greed/Pass buttons
+    local qlInputRow = CreateFrame("Frame", nil, quickLootContent)
+    qlInputRow:SetSize(500, 30)
+    qlInputRow:SetPoint("TOPLEFT", quickLootContent, "TOPLEFT", 25, y)
+
+    local qlEditBox = CreateFrame("EditBox", nil, qlInputRow, "InputBoxTemplate")
+    qlEditBox:SetSize(260, 22)
+    qlEditBox:SetPoint("LEFT", qlInputRow, "LEFT", 0, 0)
+    qlEditBox:SetAutoFocus(false)
+    qlEditBox:SetFontObject(GameFontHighlight)
+    qlEditBox:SetMaxLetters(80)
+
+    -- Placeholder text
+    local qlPlaceholder = qlEditBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    qlPlaceholder:SetPoint("LEFT", qlEditBox, "LEFT", 6, 0)
+    qlPlaceholder:SetText(L["QuickLootItemNamePlaceholder"])
+    qlEditBox:SetScript("OnTextChanged", function(self)
+        qlPlaceholder:SetShown(self:GetText() == "")
+    end)
+    qlEditBox:SetScript("OnEditFocusGained", function(self)
+        qlPlaceholder:SetShown(self:GetText() == "")
+    end)
+    qlEditBox:SetScript("OnEditFocusLost", function(self)
+        qlPlaceholder:SetShown(self:GetText() == "")
+    end)
+
+    -- Add rule function
+    local function AddQuickLootRule(rollType)
+        local itemName = qlEditBox:GetText()
+        if not itemName or itemName == "" then
+            Print(L["QuickLootEmptyName"])
+            return
+        end
+        itemName = strtrim(itemName)
+        if itemName == "" then
+            Print(L["QuickLootEmptyName"])
+            return
+        end
+        iNIFCharDB.quickLoot[itemName] = rollType
+        local actionName = rollType == 1 and L["QuickLootActionNeed"] or rollType == 2 and L["QuickLootActionGreed"] or L["QuickLootActionPass"]
+        Print(string.format(L["QuickLootAdded"], itemName, actionName))
+        qlEditBox:SetText("")
+        qlEditBox:ClearFocus()
+        if iNIF.RefreshQuickLootList then iNIF.RefreshQuickLootList() end
+    end
+
+    -- Need button
+    local btnNeed = CreateFrame("Button", nil, qlInputRow, "UIPanelButtonTemplate")
+    btnNeed:SetSize(60, 22)
+    btnNeed:SetPoint("LEFT", qlEditBox, "RIGHT", 8, 0)
+    btnNeed:SetText(L["QuickLootBtnNeed"])
+    btnNeed:GetFontString():SetTextColor(1, 0.3, 0.3)
+    btnNeed:SetScript("OnClick", function() AddQuickLootRule(1) end)
+
+    -- Greed button
+    local btnGreed = CreateFrame("Button", nil, qlInputRow, "UIPanelButtonTemplate")
+    btnGreed:SetSize(60, 22)
+    btnGreed:SetPoint("LEFT", btnNeed, "RIGHT", 4, 0)
+    btnGreed:SetText(L["QuickLootBtnGreed"])
+    btnGreed:GetFontString():SetTextColor(0.3, 1, 0.3)
+    btnGreed:SetScript("OnClick", function() AddQuickLootRule(2) end)
+
+    -- Pass button
+    local btnPass = CreateFrame("Button", nil, qlInputRow, "UIPanelButtonTemplate")
+    btnPass:SetSize(60, 22)
+    btnPass:SetPoint("LEFT", btnGreed, "RIGHT", 4, 0)
+    btnPass:SetText(L["QuickLootBtnPass"])
+    btnPass:GetFontString():SetTextColor(1, 1, 0.3)
+    btnPass:SetScript("OnClick", function() AddQuickLootRule(0) end)
+
+    -- Enter key submits as Greed by default
+    qlEditBox:SetScript("OnEnterPressed", function(self)
+        AddQuickLootRule(2)
+    end)
+    qlEditBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+
+    y = y - 36
+
+    -- Rules list container with border
+    local qlListBorder = CreateFrame("Frame", nil, quickLootContent, "BackdropTemplate")
+    qlListBorder:SetPoint("TOPLEFT", quickLootContent, "TOPLEFT", 25, y)
+    qlListBorder:SetPoint("TOPRIGHT", quickLootContent, "TOPRIGHT", -25, y)
+    qlListBorder:SetHeight(250)
+    qlListBorder:SetBackdrop({
+        bgFile = "Interface\\BUTTONS\\WHITE8X8",
+        edgeFile = "Interface\\BUTTONS\\WHITE8X8",
+        edgeSize = 1,
+    })
+    qlListBorder:SetBackdropColor(0.08, 0.08, 0.1, 0.8)
+    qlListBorder:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.6)
+
+    -- Scrollable list inside the border
+    local qlScrollFrame = CreateFrame("ScrollFrame", nil, qlListBorder, "UIPanelScrollFrameTemplate")
+    qlScrollFrame:SetPoint("TOPLEFT", qlListBorder, "TOPLEFT", 4, -4)
+    qlScrollFrame:SetPoint("BOTTOMRIGHT", qlListBorder, "BOTTOMRIGHT", -24, 4)
+
+    local qlScrollChild = CreateFrame("Frame", nil, qlScrollFrame)
+    qlScrollChild:SetWidth(qlScrollFrame:GetWidth() or 440)
+    qlScrollChild:SetHeight(1)
+    qlScrollFrame:SetScrollChild(qlScrollChild)
+
+    -- "No rules" placeholder text
+    local qlNoRules = qlScrollChild:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    qlNoRules:SetPoint("TOP", qlScrollChild, "TOP", 0, -20)
+    qlNoRules:SetText(L["QuickLootNoRules"])
+
+    -- Refresh list function
+    local function RefreshQuickLootList()
+        -- Clear existing row frames
+        local children = {qlScrollChild:GetChildren()}
+        for _, child in ipairs(children) do
+            child:Hide()
+            child:SetParent(nil)
+        end
+
+        -- Sort entries alphabetically
+        if not iNIFCharDB.quickLoot then iNIFCharDB.quickLoot = {} end
+        local sorted = {}
+        for itemName, rollType in pairs(iNIFCharDB.quickLoot) do
+            table.insert(sorted, {name = itemName, action = rollType})
+        end
+        table.sort(sorted, function(a, b) return a.name < b.name end)
+
+        if #sorted == 0 then
+            qlNoRules:Show()
+            qlScrollChild:SetHeight(60)
+            return
+        end
+        qlNoRules:Hide()
+
+        local rowHeight = 24
+        local rowY = 0
+        for i, entry in ipairs(sorted) do
+            local row = CreateFrame("Frame", nil, qlScrollChild, "BackdropTemplate")
+            row:SetHeight(rowHeight)
+            row:SetPoint("TOPLEFT", qlScrollChild, "TOPLEFT", 0, -rowY)
+            row:SetPoint("TOPRIGHT", qlScrollChild, "TOPRIGHT", 0, -rowY)
+
+            -- Alternating row backgrounds
+            if i % 2 == 0 then
+                row:SetBackdrop({bgFile = "Interface\\BUTTONS\\WHITE8X8"})
+                row:SetBackdropColor(1, 1, 1, 0.03)
+            end
+
+            -- Item name
+            local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            nameText:SetPoint("LEFT", row, "LEFT", 8, 0)
+            nameText:SetWidth(300)
+            nameText:SetJustifyH("LEFT")
+            nameText:SetText(entry.name)
+
+            -- Action button (clickable to cycle Need/Greed/Pass)
+            local capturedName = entry.name
+            local actionBtn = CreateFrame("Button", nil, row)
+            actionBtn:SetSize(70, rowHeight)
+            actionBtn:SetPoint("RIGHT", row, "RIGHT", -28, 0)
+            local actionLabel = actionBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            actionLabel:SetPoint("CENTER", actionBtn, "CENTER", 0, 0)
+            local actionText = entry.action == 1 and L["QuickLootActionNeed"] or entry.action == 2 and L["QuickLootActionGreed"] or L["QuickLootActionPass"]
+            actionLabel:SetText("[" .. actionText .. "]")
+            actionBtn:SetScript("OnClick", function()
+                local current = iNIFCharDB.quickLoot[capturedName]
+                -- Cycle: Need(1) -> Greed(2) -> Pass(0) -> Need(1)
+                local nextAction = current == 1 and 2 or current == 2 and 0 or 1
+                iNIFCharDB.quickLoot[capturedName] = nextAction
+                RefreshQuickLootList()
+            end)
+            actionBtn:SetScript("OnEnter", function(self)
+                SetCursor("INTERACT_CURSOR")
+            end)
+            actionBtn:SetScript("OnLeave", function(self)
+                SetCursor(nil)
+            end)
+
+            -- Remove button
+            local removeBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            removeBtn:SetSize(20, 20)
+            removeBtn:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+            removeBtn:SetText(L["QuickLootRemove"])
+            removeBtn:GetFontString():SetTextColor(1, 0.3, 0.3)
+            removeBtn:SetScript("OnClick", function()
+                iNIFCharDB.quickLoot[capturedName] = nil
+                Print(string.format(L["QuickLootRemoved"], capturedName))
+                RefreshQuickLootList()
+            end)
+
+            rowY = rowY + rowHeight
+        end
+
+        qlScrollChild:SetHeight(math.max(rowY, 60))
+    end
+
+    iNIF.RefreshQuickLootList = RefreshQuickLootList
+    RefreshQuickLootList()
+
+    y = y - 260
+    scrollChildren[2]:SetHeight(400)
+
+    -- ═══════════════════════════════════════════════════════════
     -- ABOUT TAB CONTENT
     -- ═══════════════════════════════════════════════════════════
     y = -10
@@ -1493,7 +1710,7 @@ local function CreateOptionsPanel()
         end
     end)
 
-    scrollChildren[2]:SetHeight(math.abs(y) + 20)
+    scrollChildren[3]:SetHeight(math.abs(y) + 20)
 
     -- ═══════════════════════════════════════════════════════════
     -- iWR SETTINGS TAB (dual-frame pattern for deferred detection)
@@ -1663,8 +1880,8 @@ local function CreateOptionsPanel()
         iWRPromoFrame:SetShown(not iWRLoaded)
 
         -- Update iWR sidebar button text
-        if sidebarButtons[3] then
-            sidebarButtons[3].text:SetText(iWRLoaded and L["Tab3iWR"] or L["Tab3iWRPromo"])
+        if sidebarButtons[4] then
+            sidebarButtons[4].text:SetText(iWRLoaded and L["Tab3iWR"] or L["Tab3iWRPromo"])
         end
 
         local iSPLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iSoundPlayer")
@@ -1672,9 +1889,12 @@ local function CreateOptionsPanel()
         iSPPromoFrame:SetShown(not iSPLoaded)
 
         -- Update iSP sidebar button text
-        if sidebarButtons[4] then
-            sidebarButtons[4].text:SetText(iSPLoaded and L["Tab4iSP"] or L["Tab4iSPPromo"])
+        if sidebarButtons[5] then
+            sidebarButtons[5].text:SetText(iSPLoaded and L["Tab4iSP"] or L["Tab4iSPPromo"])
         end
+
+        -- Refresh QuickLoot list when settings open
+        if iNIF.RefreshQuickLootList then iNIF.RefreshQuickLootList() end
     end)
 
     return stubPanel
@@ -1739,6 +1959,16 @@ local function OnEvent(self, event, ...)
         local itemLink = GetLootRollItemLink(rollID)
 
         Debug("START_LOOT_ROLL got item info: name=" .. tostring(name) .. ", itemLink=" .. tostring(itemLink) .. ", quality=" .. tostring(quality))
+
+        -- QuickLoot auto-roll check
+        if name and iNIFCharDB and iNIFCharDB.quickLoot and iNIFCharDB.quickLoot[name] ~= nil then
+            local qlAction = iNIFCharDB.quickLoot[name]
+            local actionName = qlAction == 1 and "Need" or qlAction == 2 and "Greed" or "Pass"
+            RollOnLoot(rollID, qlAction)
+            print(L["PrintPrefix"] .. string.format(L["QuickLootAutoRoll"], actionName, itemLink or name))
+            Debug("QuickLoot: Rolled " .. actionName .. " on " .. tostring(name), 3)
+            return
+        end
 
         -- Count eligible players (connected + visible = in the dungeon/nearby)
         -- Players who are offline or in a different zone won't roll, so don't count them
@@ -1892,12 +2122,30 @@ local function OnEvent(self, event, ...)
         else
             Debug("No monitored roll, not auto-confirming BoP")
         end
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        local isLogin, isReload = ...
+        if not isLogin and not isReload then
+            local inInstance, instanceType = IsInInstance()
+            if inInstance and (instanceType == "party" or instanceType == "raid") then
+                local status
+                if not iNIFDB.enabled then
+                    status = L["StatusDisabled"]
+                elseif iNIFDB.enchanterMode then
+                    status = L["StatusEnchanterMode"]
+                else
+                    status = L["StatusEnabled"]
+                end
+                print(L["PrintPrefix"] .. L["TooltipStatus"] .. status)
+            end
+        end
     end
 end
 
 -- Register events
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("START_LOOT_ROLL")
 eventFrame:RegisterEvent("CANCEL_LOOT_ROLL")
 eventFrame:RegisterEvent("CHAT_MSG_LOOT")
@@ -2238,6 +2486,12 @@ SlashCmdList["iNIF"] = function(msg)
         Print(L["SlashEnchanterMode"] .. (iNIFDB.enchanterMode and L["SlashEnabled"] or L["SlashDisabled"]))
         UpdateAllCheckboxes("enchanterMode", iNIFDB.enchanterMode)
 
+    elseif msg == "quickloot" or msg == "ql" then
+        if iNIF.SettingsFrame then
+            iNIF.SettingsFrame:Show()
+            if iNIF.ShowTab then iNIF.ShowTab(2) end
+        end
+
     elseif msg == "debug" then
         iNIFDB.debug = not iNIFDB.debug
         UpdateAllCheckboxes("debug", iNIFDB.debug)
@@ -2339,6 +2593,7 @@ SlashCmdList["iNIF"] = function(msg)
         print("  " .. L["SlashHelpParty"])
         print("  " .. L["SlashHelpRemember"])
         print("  " .. L["SlashHelpEnchanter"])
+        print("  " .. L["SlashHelpQuickLoot"])
         print("  " .. L["SlashHelpDebug"])
         print("  " .. L["SlashHelpTest"])
         print("  " .. L["SlashHelpTestComm"])

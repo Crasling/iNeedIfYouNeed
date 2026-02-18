@@ -191,6 +191,24 @@ L["Tab3iWRPromo"] = "iWillRemember"
 L["Tab4iSP"] = "iSP Settings"
 L["Tab4iSPPromo"] = "iSoundPlayer"
 
+-- QuickLoot Tab
+L["Tab2QuickLoot"] = "QuickLoot"
+L["SettingsSectionQuickLoot"] = Colors.iNIF .. "QuickLoot Rules"
+L["QuickLootDesc"] = Colors.Gray .. "Type an item name (e.g., Arcane Tome) and press Need, Greed, or Pass to auto-roll when that item drops. Names must match exactly." .. Colors.Reset
+L["QuickLootItemNamePlaceholder"] = "Enter item name..."
+L["QuickLootBtnNeed"] = "Need"
+L["QuickLootBtnGreed"] = "Greed"
+L["QuickLootBtnPass"] = "Pass"
+L["QuickLootNoRules"] = Colors.Gray .. "No QuickLoot rules configured." .. Colors.Reset
+L["QuickLootRemove"] = "X"
+L["QuickLootAdded"] = "QuickLoot: Added %s (%s)"
+L["QuickLootRemoved"] = "QuickLoot: Removed %s"
+L["QuickLootEmptyName"] = "QuickLoot: Please enter an item name"
+L["QuickLootAutoRoll"] = "QuickLoot: Auto-rolling %s on %s"
+L["QuickLootActionNeed"] = Colors.Red .. "Need" .. Colors.Reset
+L["QuickLootActionGreed"] = Colors.Green .. "Greed" .. Colors.Reset
+L["QuickLootActionPass"] = Colors.Yellow .. "Pass" .. Colors.Reset
+
 -- Error messages
 L["ErroriWRNotFound"] = "iWR addon not found or settings not initialized!"
 L["ErroriSPNotFound"] = "iSP addon not found or settings not initialized!"
@@ -241,6 +259,7 @@ L["SlashHelpNotifications"] = Colors.Yellow .. "/inif notifications" .. Colors.R
 L["SlashHelpParty"] = Colors.Yellow .. "/inif party" .. Colors.Reset .. " - Toggle party/raid announcements"
 L["SlashHelpRemember"] = Colors.Yellow .. "/inif remember" .. Colors.Reset .. " - Toggle checkbox state memory"
 L["SlashHelpEnchanter"] = Colors.Yellow .. "/inif enchanter" .. Colors.Reset .. " - Toggle Enchanter Mode (Need for disenchant)"
+L["SlashHelpQuickLoot"] = Colors.Yellow .. "/inif quickloot" .. Colors.Reset .. " - Open QuickLoot settings tab"
 L["SlashHelpDebug"] = Colors.Yellow .. "/inif debug" .. Colors.Reset .. " - Toggle debug mode"
 L["SlashHelpTest"] = Colors.Yellow .. "/inif test" .. Colors.Reset .. " - Show addon status and active rolls"
 L["SlashHelpTestComm"] = Colors.Yellow .. "/inif testcomm" .. Colors.Reset .. " - Test AceComm message reception (requires active monitored roll)"
