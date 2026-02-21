@@ -1,5 +1,24 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.3.4
+
+### File Split & Code Organization
+- Split monolithic iNeedIfYouNeed.lua (2,602 lines) into 5 focused files
+- iNeedIfYouNeed_Main.lua — namespace, libraries, saved vars, colors, core variables
+- iNeedIfYouNeed_RollLogic.lua — timer window, roll processing, AceComm, decision logic
+- iNeedIfYouNeed_OptionsPanel.lua — settings panel with all tabs
+- iNeedIfYouNeed_Frames.lua — event handler, menu panel, minimap icon
+- iNeedIfYouNeed_SlashCommands.lua — all /inif commands
+- Fixed #activeRolls hash table bug (always returned 0, now uses CountTable)
+- Fixed forward declaration pattern for cross-referenced functions
+
+### QuickLoot Auto Toggle (New Option)
+- New "Toggle" action for QuickLoot rules (alongside Need/Greed/Pass)
+- Auto-checks the iNIF checkbox instead of instantly rolling
+- Lets the monitoring system handle the roll while saving manual checkbox clicks
+- Orange "Toggle" button in QuickLoot settings tab
+- Cycling updated: Need → Greed → Pass → Toggle → Need
+
 ## Version 0.3.2.1
 
 ### QuickLoot Tab (New Feature)

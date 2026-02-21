@@ -194,11 +194,12 @@ L["Tab4iSPPromo"] = "iSoundPlayer"
 -- QuickLoot Tab
 L["Tab2QuickLoot"] = "QuickLoot"
 L["SettingsSectionQuickLoot"] = Colors.iNIF .. "QuickLoot Rules"
-L["QuickLootDesc"] = Colors.Gray .. "Type an item name (e.g., Arcane Tome) and press Need, Greed, or Pass to auto-roll when that item drops. Names must match exactly." .. Colors.Reset
+L["QuickLootDesc"] = Colors.Gray .. "Type an item name (e.g., Arcane Tome) and press Need, Greed, Pass, or Toggle to auto-roll when that item drops. Toggle will auto-check the iNIF checkbox instead of instantly rolling. Names must match exactly." .. Colors.Reset
 L["QuickLootItemNamePlaceholder"] = "Enter item name..."
 L["QuickLootBtnNeed"] = "Need"
 L["QuickLootBtnGreed"] = "Greed"
 L["QuickLootBtnPass"] = "Pass"
+L["QuickLootBtnToggle"] = "Toggle"
 L["QuickLootNoRules"] = Colors.Gray .. "No QuickLoot rules configured." .. Colors.Reset
 L["QuickLootRemove"] = "X"
 L["QuickLootAdded"] = "QuickLoot: Added %s (%s)"
@@ -208,6 +209,8 @@ L["QuickLootAutoRoll"] = "QuickLoot: Auto-rolling %s on %s"
 L["QuickLootActionNeed"] = Colors.Red .. "Need" .. Colors.Reset
 L["QuickLootActionGreed"] = Colors.Green .. "Greed" .. Colors.Reset
 L["QuickLootActionPass"] = Colors.Yellow .. "Pass" .. Colors.Reset
+L["QuickLootActionToggle"] = Colors.iNIF .. "Toggle" .. Colors.Reset
+L["QuickLootAutoToggle"] = "QuickLoot: Auto-toggled checkbox on %s"
 
 -- Error messages
 L["ErroriWRNotFound"] = "iWR addon not found or settings not initialized!"
