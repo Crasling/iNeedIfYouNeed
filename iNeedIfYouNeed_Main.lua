@@ -11,21 +11,21 @@ local addonName, iNIF = ...
 local L = iNIF.L or {}  -- Load localization table with fallback
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                                  Libraries                                    │
+-- │                                  Libraries                                     │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 iNIF.LDBroker = LibStub("LibDataBroker-1.1", true)
 iNIF.LDBIcon = LibStub("LibDBIcon-1.0", true)
 iNIF.AceComm = LibStub("AceComm-3.0", true)
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                                  Metadata                                     │
+-- │                                  Metadata                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 iNIF.Title = select(2, C_AddOns.GetAddOnInfo(addonName)):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("%s*v?[%d%.]+$", "")
 iNIF.Version = C_AddOns.GetAddOnMetadata(addonName, "Version")
 iNIF.Author = C_AddOns.GetAddOnMetadata(addonName, "Author")
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                              Saved Variables                                  │
+-- │                              Saved Variables                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 if not iNIFDB then
     iNIFDB = {
@@ -38,6 +38,11 @@ if not iNIFDB then
         hideLootFrame = true,  -- Hide Blizzard loot frame (GroupLootFrame) after Greed+Checkbox
         hideMonitorWindow = true, -- Hide monitor window (Active Rolls timer) after Greed+Checkbox
         enchanterMode = false, -- Enchanter Mode: Need items nobody else needs (for disenchant)
+        enchanterAnnounceDE = true, -- Announce when enchanter receives item for DE
+        enchanterAnnounceResults = true, -- Announce disenchant material results to party
+        ninjaDetection = true, -- Enable ninja detection (flag wrong armor type needs)
+        ninjaAnnounce = false, -- Announce ninja to party/raid (off by default)
+        rollTracker = true, -- Enable roll fairness tracking
         minimapButton = {
             hide = false,
             minimapPos = -30
@@ -51,12 +56,21 @@ if not iNIFDB then
     }
 end
 
--- Per-character saved variables
-if not iNIFCharDB then iNIFCharDB = {} end
-if not iNIFCharDB.quickLoot then iNIFCharDB.quickLoot = {} end
+-- Dynamic defaults (backfill for existing users upgrading from older versions)
+-- Called from ADDON_LOADED after SavedVariables are loaded from disk
+function iNIF.ApplyDynamicDefaults()
+    if iNIFDB.enchanterAnnounceDE == nil then iNIFDB.enchanterAnnounceDE = true end
+    if iNIFDB.enchanterAnnounceResults == nil then iNIFDB.enchanterAnnounceResults = true end
+    if iNIFDB.ninjaDetection == nil then iNIFDB.ninjaDetection = true end
+    if iNIFDB.ninjaAnnounce == nil then iNIFDB.ninjaAnnounce = false end
+    if iNIFDB.rollTracker == nil then iNIFDB.rollTracker = true end
+    -- Per-character saved variables
+    if not iNIFCharDB then iNIFCharDB = {} end
+    if not iNIFCharDB.quickLoot then iNIFCharDB.quickLoot = {} end
+end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                                   Colors                                      │
+-- │                                   Colors                                       │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 iNIF.Colors = {
     iNIF = "|cffff9716",      -- Orange (same as iWR base color)
@@ -70,15 +84,31 @@ iNIF.Colors = {
 }
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                              Core Variables                                   │
+-- │                              Core Variables                                    │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 iNIF.activeRolls = {} -- Track active loot rolls
 iNIF.eventFrame = CreateFrame("Frame")
 iNIF.timerWindow = nil -- Timer display window
 iNIF.InCombat = false -- Combat state flag
 
+-- Enchanter DE tracking (session-only)
+iNIF.enchanterHistory = {} -- { {itemLink, mats={{matLink,count}}, timestamp}, ... }
+iNIF.pendingDisenchant = nil -- {timestamp} when DE cast completes, cleared after 3s
+iNIF.enchanterMatTotals = {} -- { ["matName"] = {link=..., count=N}, ... }
+
+-- Ninja detection (session-only)
+iNIF.ninjaIncidents = {} -- { ["PlayerName"] = {count=N, incidents={{itemLink,armorType,timestamp},...}} }
+
+-- Roll fairness tracker (session-only)
+iNIF.rollTracker = {
+    players = {}, -- { ["Name"] = {wins=0, rolls=0, needWins=0, greedWins=0} }
+    totalRolls = 0,
+    history = {}, -- { {itemLink, winner, rollType, timestamp}, ... }
+}
+iNIF.recentlyCompletedRolls = {} -- { {itemLink, participants={}, endTime}, ... }
+
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                           Combat State Handling                               │
+-- │                           Combat State Handling                                │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 local combatEventFrame = CreateFrame("Frame")
 combatEventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -104,7 +134,7 @@ combatEventFrame:SetScript("OnEvent", function(_, event)
 end)
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Checkbox Registry                                  │
+-- │                            Checkbox Registry                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 iNIF.CheckboxRegistry = {
     enabled = {},
@@ -113,6 +143,11 @@ iNIF.CheckboxRegistry = {
     hideLootFrame = {},
     hideMonitorWindow = {},
     enchanterMode = {},
+    enchanterAnnounceDE = {},
+    enchanterAnnounceResults = {},
+    ninjaDetection = {},
+    ninjaAnnounce = {},
+    rollTracker = {},
     debug = {}
 }
 
@@ -126,7 +161,7 @@ function iNIF.UpdateAllCheckboxes(settingKey, value)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                             Style Helper                                      │
+-- │                             Style Helper                                       │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.CreateiNIFStyleFrame(parent, width, height, anchor)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")

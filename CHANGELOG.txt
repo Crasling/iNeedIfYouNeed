@@ -1,5 +1,44 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.0
+
+### Enchanter Tab (New)
+- Enchanter Mode settings moved from General to a dedicated "Enchanter" sidebar tab
+- Disenchant detection via UNIT_SPELLCAST_SUCCEEDED (spellID 13262) + CHAT_MSG_LOOT
+- Announce disenchant results to party/raid chat
+- Session disenchant history (scrollable list, newest first, with Clear button)
+- Material Split Calculator: standalone draggable frame showing total mats and per-player split
+- New slash command: `/inif split` to toggle the split window
+
+### Ninja Detection (New)
+- Detects when a player rolls Need on armor they cannot equip (class-based proficiency check)
+- Uses GetItemInfo classID/subclassID for Cloth/Leather/Mail/Plate identification
+- Handles GetItemInfo cache misses with retry (up to 2 retries, 0.5s delay)
+- Local chat warning with player name, class, item link, and armor type
+- Optional party/raid announcement (off by default)
+- Session ninja incident tracking with `/inif ninja` to review
+- Settings in General tab: Enable Ninja Detection, Announce to party/raid
+
+### Roll Fairness Tracker (New)
+- Tracks roll participation and wins per player across the session
+- Correlates "receives loot:" messages with recently completed rolls
+- Luck Meter: floating frame showing per-player win rate with colored bars
+- New slash command: `/inif luck` to toggle the Luck Meter
+- Settings in General tab: Enable Roll Tracker, Show Luck Meter button
+
+### Settings Panel Restructure
+- Sidebar tabs reindexed: General (1), QuickLoot (2), Enchanter (3), About (4), iWR (5), iSP (6)
+- Ninja Detection and Roll Tracker sections added to General tab
+- Enchanter tab contains: mode toggle, DE announce settings, disenchant history, split window
+
+### Localization
+- ~40 new English locale keys across all new features
+- Full Russian translations added (marked with ИИ перевод)
+
+ Alpha Build History
+ ~~~~~~~~~~~~~~~~~~~
+  0.4.0.1  - Initial implementation of all v0.4.0 features
+
 ## Version 0.3.4
 
 ### File Split & Code Organization

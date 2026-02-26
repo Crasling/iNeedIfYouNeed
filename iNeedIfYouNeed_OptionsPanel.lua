@@ -20,7 +20,7 @@ local HasActiveRolls = function(...) return iNIF.HasActiveRolls(...) end
 local UpdateAllCheckboxes = iNIF.UpdateAllCheckboxes
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Helper Functions                                   │
+-- │                            Helper Functions                                    │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
 -- Helper: Create section header
@@ -99,7 +99,7 @@ local function CreateInfoText(parent, text, yOffset, fontObj)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Options Panel                                      │
+-- │                            Options Panel                                       │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.CreateOptionsPanel()
     -- Main frame (750x520) - needs to be named for ESC functionality
@@ -227,13 +227,14 @@ function iNIF.CreateOptionsPanel()
 
     local generalContainer, generalContent = CreateTabContent()
     local quickLootContainer, quickLootContent = CreateTabContent()
-    local aboutContainer, aboutContent = CreateTabContent()
+    local enchanterContainer, enchanterContent = CreateTabContent()
 
     -- ALWAYS create addon tabs (detection deferred to OnShow hook)
+    local aboutContainer, aboutContent = CreateTabContent()
     local iWRContainer, iWRContent = CreateTabContent()
     local iSPContainer, iSPContent = CreateTabContent()
 
-    local tabContents = {generalContainer, quickLootContainer, aboutContainer, iWRContainer, iSPContainer}
+    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer}
 
     local sidebarButtons = {}
     local activeIndex = 1
@@ -261,10 +262,11 @@ function iNIF.CreateOptionsPanel()
         {type = "header", label = L["SidebarHeaderiNIF"]},
         {type = "tab", label = L["Tab1General"], index = 1},
         {type = "tab", label = L["Tab2QuickLoot"], index = 2},
-        {type = "tab", label = L["Tab2About"], index = 3},
+        {type = "tab", label = L["Tab3Enchanter"] or "Enchanter", index = 3},
+        {type = "tab", label = L["Tab4About"] or L["Tab2About"], index = 4},
         {type = "header", label = L["SidebarHeaderOtherAddons"]},
-        {type = "tab", label = L["Tab3iWR"], index = 4},
-        {type = "tab", label = L["Tab4iSP"], index = 5},
+        {type = "tab", label = L["Tab5iWR"] or L["Tab3iWR"], index = 5},
+        {type = "tab", label = L["Tab6iSP"] or L["Tab4iSP"], index = 6},
     }
 
     local sidebarY = -6
@@ -342,57 +344,38 @@ function iNIF.CreateOptionsPanel()
         L["SettingsHideMonitorDesc"], y, "hideMonitorWindow")
     checkboxRefs.hideMonitorWindow = cbHideMonitorWindow
 
-    -- Enchanter Mode section
+    -- ── Ninja Detection ──
     y = y - 10
-    _, y = CreateSectionHeader(generalContent, L["SettingsSectionEnchanterMode"], y)
+    _, y = CreateSectionHeader(generalContent, L["SettingsSectionNinjaDetection"] or "Ninja Detection", y)
 
-    local cbEnchanter
-    cbEnchanter, y = CreateSettingsCheckbox(generalContent, L["SettingsEnchanterMode"],
-        L["SettingsEnchanterModeDesc"], y, "enchanterMode")
-    checkboxRefs.enchanterMode = cbEnchanter
+    local cbNinja
+    cbNinja, y = CreateSettingsCheckbox(generalContent, L["SettingsNinjaDetection"] or "Enable Ninja Detection",
+        L["SettingsNinjaDetectionDesc"] or "", y, "ninjaDetection")
+    checkboxRefs.ninjaDetection = cbNinja
 
-    -- Override OnClick: block toggle during active rolls
-    cbEnchanter:SetScript("OnClick", function(self)
-        if HasActiveRolls() then
-            -- Revert the check state and block
-            self:SetChecked(iNIFDB.enchanterMode)
-            Print(L["EnchanterModeActiveRoll"])
-            return
-        end
-        local checked = self:GetChecked() and true or false
-        iNIFDB.enchanterMode = checked
-        Debug(L["SettingsEnchanterMode"] .. " " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
-        UpdateAllCheckboxes("enchanterMode", checked)
+    local cbNinjaAnnounce
+    cbNinjaAnnounce, y = CreateSettingsCheckbox(generalContent, L["SettingsNinjaAnnounce"] or "Announce ninja to party/raid",
+        L["SettingsNinjaAnnounceDesc"] or "", y, "ninjaAnnounce")
+    checkboxRefs.ninjaAnnounce = cbNinjaAnnounce
+
+    -- ── Roll Tracker ──
+    y = y - 10
+    _, y = CreateSectionHeader(generalContent, L["SettingsSectionRollTracker"] or "Roll Tracker", y)
+
+    local cbRollTracker
+    cbRollTracker, y = CreateSettingsCheckbox(generalContent, L["SettingsRollTracker"] or "Enable Roll Tracker",
+        L["SettingsRollTrackerDesc"] or "", y, "rollTracker")
+    checkboxRefs.rollTracker = cbRollTracker
+
+    -- Show Luck Meter button
+    local btnLuck = CreateFrame("Button", nil, generalContent, "UIPanelButtonTemplate")
+    btnLuck:SetSize(150, 22)
+    btnLuck:SetPoint("TOPLEFT", generalContent, "TOPLEFT", 25, y)
+    btnLuck:SetText(L["RollTrackerShowButton"] or "Show Luck Meter")
+    btnLuck:SetScript("OnClick", function()
+        if iNIF.ToggleLuckMeter then iNIF.ToggleLuckMeter() end
     end)
-
-    -- Grey out checkbox when rolls are active (poll on show/update)
-    local enchanterTicker = nil
-    local function UpdateEnchanterCheckboxState()
-        local hasRolls = HasActiveRolls()
-        if hasRolls then
-            cbEnchanter:SetAlpha(0.4)
-            cbEnchanter:SetEnabled(false)
-            cbEnchanter.Text:SetTextColor(0.5, 0.5, 0.5)
-        else
-            cbEnchanter:SetAlpha(1.0)
-            cbEnchanter:SetEnabled(true)
-            cbEnchanter.Text:SetTextColor(1, 1, 1)
-        end
-    end
-
-    -- Start/stop polling when settings opens/closes
-    settingsFrame:HookScript("OnShow", function()
-        UpdateEnchanterCheckboxState()
-        if not enchanterTicker then
-            enchanterTicker = C_Timer.NewTicker(0.5, UpdateEnchanterCheckboxState)
-        end
-    end)
-    settingsFrame:HookScript("OnHide", function()
-        if enchanterTicker then
-            enchanterTicker:Cancel()
-            enchanterTicker = nil
-        end
-    end)
+    y = y - 30
 
     scrollChildren[1]:SetHeight(math.abs(y) + 20)
 
@@ -614,7 +597,174 @@ function iNIF.CreateOptionsPanel()
     scrollChildren[2]:SetHeight(400)
 
     -- ╭────────────────────────────────────────────────────────────────────────────╮
-    -- │                          About Tab Content                                │
+    -- │                        Enchanter Tab Content                               │
+    -- ╰────────────────────────────────────────────────────────────────────────────╯
+    y = -10
+
+    -- ── Enchanter Mode Settings ──
+    _, y = CreateSectionHeader(enchanterContent, L["SettingsSectionEnchanterMode"], y)
+
+    local cbEnchanter
+    cbEnchanter, y = CreateSettingsCheckbox(enchanterContent, L["SettingsEnchanterMode"],
+        L["SettingsEnchanterModeDesc"], y, "enchanterMode")
+    checkboxRefs.enchanterMode = cbEnchanter
+
+    -- Override OnClick: block toggle during active rolls
+    cbEnchanter:SetScript("OnClick", function(self)
+        if HasActiveRolls() then
+            self:SetChecked(iNIFDB.enchanterMode)
+            Print(L["EnchanterModeActiveRoll"])
+            return
+        end
+        local checked = self:GetChecked() and true or false
+        iNIFDB.enchanterMode = checked
+        Debug(L["SettingsEnchanterMode"] .. " " .. (checked and (Colors.Green .. "enabled" .. Colors.Reset) or (Colors.Red .. "disabled" .. Colors.Reset)))
+        UpdateAllCheckboxes("enchanterMode", checked)
+    end)
+
+    -- Grey out checkbox when rolls are active (poll on show/update)
+    local enchanterTicker = nil
+    local function UpdateEnchanterCheckboxState()
+        local hasRolls = HasActiveRolls()
+        if hasRolls then
+            cbEnchanter:SetAlpha(0.4)
+            cbEnchanter:SetEnabled(false)
+            cbEnchanter.Text:SetTextColor(0.5, 0.5, 0.5)
+        else
+            cbEnchanter:SetAlpha(1.0)
+            cbEnchanter:SetEnabled(true)
+            cbEnchanter.Text:SetTextColor(1, 1, 1)
+        end
+    end
+
+    settingsFrame:HookScript("OnShow", function()
+        UpdateEnchanterCheckboxState()
+        if not enchanterTicker then
+            enchanterTicker = C_Timer.NewTicker(0.5, UpdateEnchanterCheckboxState)
+        end
+    end)
+    settingsFrame:HookScript("OnHide", function()
+        if enchanterTicker then
+            enchanterTicker:Cancel()
+            enchanterTicker = nil
+        end
+    end)
+
+    local cbAnnounceDE
+    cbAnnounceDE, y = CreateSettingsCheckbox(enchanterContent, L["SettingsAnnounceDE"] or "Announce item received for DE",
+        L["SettingsAnnounceDEDesc"] or "", y, "enchanterAnnounceDE")
+    checkboxRefs.enchanterAnnounceDE = cbAnnounceDE
+
+    local cbAnnounceResults
+    cbAnnounceResults, y = CreateSettingsCheckbox(enchanterContent, L["SettingsAnnounceResults"] or "Announce disenchant results",
+        L["SettingsAnnounceResultsDesc"] or "", y, "enchanterAnnounceResults")
+    checkboxRefs.enchanterAnnounceResults = cbAnnounceResults
+
+    -- ── Disenchant History ──
+    y = y - 10
+    _, y = CreateSectionHeader(enchanterContent, L["SettingsSectionEnchanterHistory"] or "Disenchant History", y)
+
+    -- History list container
+    local deHistoryBorder = CreateFrame("Frame", nil, enchanterContent, "BackdropTemplate")
+    deHistoryBorder:SetPoint("TOPLEFT", enchanterContent, "TOPLEFT", 25, y)
+    deHistoryBorder:SetPoint("TOPRIGHT", enchanterContent, "TOPRIGHT", -25, y)
+    deHistoryBorder:SetHeight(150)
+    deHistoryBorder:SetBackdrop({
+        bgFile = "Interface\\BUTTONS\\WHITE8X8",
+        edgeFile = "Interface\\BUTTONS\\WHITE8X8",
+        edgeSize = 1,
+    })
+    deHistoryBorder:SetBackdropColor(0.08, 0.08, 0.1, 0.8)
+    deHistoryBorder:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.6)
+
+    local deHistoryScroll = CreateFrame("ScrollFrame", nil, deHistoryBorder, "UIPanelScrollFrameTemplate")
+    deHistoryScroll:SetPoint("TOPLEFT", deHistoryBorder, "TOPLEFT", 4, -4)
+    deHistoryScroll:SetPoint("BOTTOMRIGHT", deHistoryBorder, "BOTTOMRIGHT", -24, 4)
+
+    local deHistoryChild = CreateFrame("Frame", nil, deHistoryScroll)
+    deHistoryChild:SetWidth(deHistoryScroll:GetWidth() or 440)
+    deHistoryChild:SetHeight(1)
+    deHistoryScroll:SetScrollChild(deHistoryChild)
+
+    local deHistoryEmpty = deHistoryChild:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    deHistoryEmpty:SetPoint("TOP", deHistoryChild, "TOP", 0, -20)
+    deHistoryEmpty:SetText(L["EnchanterHistoryEmpty"] or "No disenchants recorded this session.")
+
+    -- Refresh disenchant history display
+    local function RefreshEnchanterHistory()
+        local children = {deHistoryChild:GetChildren()}
+        for _, child in ipairs(children) do
+            child:Hide()
+            child:SetParent(nil)
+        end
+
+        if not iNIF.enchanterHistory or #iNIF.enchanterHistory == 0 then
+            deHistoryEmpty:Show()
+            deHistoryChild:SetHeight(60)
+            return
+        end
+        deHistoryEmpty:Hide()
+
+        local rowHeight = 20
+        local rowY = 0
+        -- Show newest first
+        for i = #iNIF.enchanterHistory, 1, -1 do
+            local entry = iNIF.enchanterHistory[i]
+            local row = CreateFrame("Frame", nil, deHistoryChild)
+            row:SetHeight(rowHeight)
+            row:SetPoint("TOPLEFT", deHistoryChild, "TOPLEFT", 0, -rowY)
+            row:SetPoint("TOPRIGHT", deHistoryChild, "TOPRIGHT", 0, -rowY)
+
+            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            text:SetPoint("LEFT", row, "LEFT", 8, 0)
+            text:SetWidth(420)
+            text:SetJustifyH("LEFT")
+
+            local matStr = ""
+            if entry.mats then
+                for _, mat in ipairs(entry.mats) do
+                    if matStr ~= "" then matStr = matStr .. ", " end
+                    matStr = matStr .. mat.count .. "x " .. (mat.matLink or "?")
+                end
+            end
+            text:SetText((entry.itemLink or "?") .. " → " .. (matStr ~= "" and matStr or "..."))
+
+            rowY = rowY + rowHeight
+        end
+        deHistoryChild:SetHeight(math.max(rowY, 60))
+    end
+
+    iNIF.RefreshEnchanterHistory = RefreshEnchanterHistory
+
+    y = y - 160
+
+    -- Clear History button
+    local btnClearHistory = CreateFrame("Button", nil, enchanterContent, "UIPanelButtonTemplate")
+    btnClearHistory:SetSize(130, 22)
+    btnClearHistory:SetPoint("TOPLEFT", enchanterContent, "TOPLEFT", 25, y)
+    btnClearHistory:SetText(L["EnchanterClearHistoryButton"] or "Clear History")
+    btnClearHistory:SetScript("OnClick", function()
+        wipe(iNIF.enchanterHistory)
+        wipe(iNIF.enchanterMatTotals)
+        RefreshEnchanterHistory()
+        Print(L["EnchanterHistoryCleared"] or "Disenchant history cleared.")
+    end)
+
+    -- Open Split Window button
+    local btnSplit = CreateFrame("Button", nil, enchanterContent, "UIPanelButtonTemplate")
+    btnSplit:SetSize(150, 22)
+    btnSplit:SetPoint("LEFT", btnClearHistory, "RIGHT", 8, 0)
+    btnSplit:SetText(L["EnchanterSplitButton"] or "Open Split Window")
+    btnSplit:SetScript("OnClick", function()
+        if iNIF.ToggleSplitWindow then iNIF.ToggleSplitWindow() end
+    end)
+
+    y = y - 30
+
+    scrollChildren[3]:SetHeight(math.abs(y) + 20)
+
+    -- ╭────────────────────────────────────────────────────────────────────────────╮
+    -- │                          About Tab Content                                 │
     -- ╰────────────────────────────────────────────────────────────────────────────╯
     y = -10
 
@@ -694,10 +844,10 @@ function iNIF.CreateOptionsPanel()
         end
     end)
 
-    scrollChildren[3]:SetHeight(math.abs(y) + 20)
+    scrollChildren[4]:SetHeight(math.abs(y) + 20)
 
     -- ╭────────────────────────────────────────────────────────────────────────────╮
-    -- │                           iWR Settings Tab                                │
+    -- │                           iWR Settings Tab                                 │
     -- ╰────────────────────────────────────────────────────────────────────────────╯
 
     -- Create INSTALLED variant frame (always created, hidden initially)
@@ -755,7 +905,7 @@ function iNIF.CreateOptionsPanel()
         y, "GameFontDisableSmall")
 
     -- ╭────────────────────────────────────────────────────────────────────────────╮
-    -- │                           iSP Settings Tab                                │
+    -- │                           iSP Settings Tab                                 │
     -- ╰────────────────────────────────────────────────────────────────────────────╯
 
     -- Create INSTALLED variant frame (always created, hidden initially)
@@ -864,8 +1014,8 @@ function iNIF.CreateOptionsPanel()
         iWRPromoFrame:SetShown(not iWRLoaded)
 
         -- Update iWR sidebar button text
-        if sidebarButtons[4] then
-            sidebarButtons[4].text:SetText(iWRLoaded and L["Tab3iWR"] or L["Tab3iWRPromo"])
+        if sidebarButtons[5] then
+            sidebarButtons[5].text:SetText(iWRLoaded and (L["Tab5iWR"] or L["Tab3iWR"]) or L["Tab3iWRPromo"])
         end
 
         local iSPLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iSoundPlayer")
@@ -873,9 +1023,12 @@ function iNIF.CreateOptionsPanel()
         iSPPromoFrame:SetShown(not iSPLoaded)
 
         -- Update iSP sidebar button text
-        if sidebarButtons[5] then
-            sidebarButtons[5].text:SetText(iSPLoaded and L["Tab4iSP"] or L["Tab4iSPPromo"])
+        if sidebarButtons[6] then
+            sidebarButtons[6].text:SetText(iSPLoaded and (L["Tab6iSP"] or L["Tab4iSP"]) or L["Tab4iSPPromo"])
         end
+
+        -- Refresh disenchant history when settings open
+        if iNIF.RefreshEnchanterHistory then iNIF.RefreshEnchanterHistory() end
 
         -- Refresh QuickLoot list when settings open
         if iNIF.RefreshQuickLootList then iNIF.RefreshQuickLootList() end

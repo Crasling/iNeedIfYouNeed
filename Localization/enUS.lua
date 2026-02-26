@@ -104,7 +104,7 @@ L["ShowingFramesPlural"] = Msg("Showing " .. Colors.Yellow .. "%d" .. Colors.Res
 L["NoHiddenFrames"] = Msg(Colors.Yellow .. "No hidden loot frames to show" .. Colors.Reset)
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                              Combat Messages                                  │
+-- │                              Combat Messages                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["InCombat"] = Msg("Cannot be used in combat.")
 L["EnchanterModeActiveRoll"] = Msg("Cannot toggle Enchanter Mode during an active roll.")
@@ -133,7 +133,7 @@ L["SettingsHideMonitor"] = "Hide Monitor Window After Greed+Checkbox"
 L["SettingsHideMonitorDesc"] = Colors.Gray .. "Hide the Active Rolls monitor window after clicking Greed with checkbox enabled." .. Colors.Reset
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                       Settings Panel - Enchanter Mode                         │
+-- │                       Settings Panel - Enchanter Mode                          │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["SettingsSectionEnchanterMode"] = Colors.iNIF .. "Enchanter Mode"
 L["SettingsEnchanterMode"] = "Enable Enchanter Mode"
@@ -178,6 +178,8 @@ L["StubOpenSettingsButton"] = Colors.iNIF .. " Options"
 -- │                               Startup Message                                  │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["StartupMessage"] = "%s Classic TBC" .. Colors.Reset .. " %s Loaded."
+L["WelcomeStart"] = Msg("Thank you ")
+L["WelcomeEnd"] = Colors.iNIF .. " for being part of the development of iNeedIfYouNeed, if you get into any issues please reach out on CurseForge in the comment section or Discord."
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                                Sidebar Tabs                                    │
@@ -262,6 +264,9 @@ L["SlashHelpNotifications"] = Colors.Yellow .. "/inif notifications" .. Colors.R
 L["SlashHelpParty"] = Colors.Yellow .. "/inif party" .. Colors.Reset .. " - Toggle party/raid announcements"
 L["SlashHelpRemember"] = Colors.Yellow .. "/inif remember" .. Colors.Reset .. " - Toggle checkbox state memory"
 L["SlashHelpEnchanter"] = Colors.Yellow .. "/inif enchanter" .. Colors.Reset .. " - Toggle Enchanter Mode (Need for disenchant)"
+L["SlashHelpSplit"] = Colors.Yellow .. "/inif split" .. Colors.Reset .. " - Open material split calculator"
+L["SlashHelpLuck"] = Colors.Yellow .. "/inif luck" .. Colors.Reset .. " - Show roll luck tracker"
+L["SlashHelpNinja"] = Colors.Yellow .. "/inif ninja" .. Colors.Reset .. " - Show ninja incidents this session"
 L["SlashHelpQuickLoot"] = Colors.Yellow .. "/inif quickloot" .. Colors.Reset .. " - Open QuickLoot settings tab"
 L["SlashHelpDebug"] = Colors.Yellow .. "/inif debug" .. Colors.Reset .. " - Toggle debug mode"
 L["SlashHelpTest"] = Colors.Yellow .. "/inif test" .. Colors.Reset .. " - Show addon status and active rolls"
@@ -297,3 +302,62 @@ L["TestEventCancelLootRoll"] = "  - CANCEL_LOOT_ROLL: "
 L["TestYes"] = Colors.Green .. "YES" .. Colors.Reset
 L["TestNo"] = Colors.Red .. "NO" .. Colors.Reset
 L["TestRollInfo"] = "  Roll #%d: ID=%d, item=%s, checkbox=%s"
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                        Sidebar Tabs (v0.4.0 Reindexed)                       │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["Tab3Enchanter"] = "Enchanter"
+L["Tab4About"] = "About"
+L["Tab5iWR"] = "iWR Settings"
+L["Tab5iWRPromo"] = "iWillRemember"
+L["Tab6iSP"] = "iSP Settings"
+L["Tab6iSPPromo"] = "iSoundPlayer"
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                    Settings Panel - Enchanter Tab (v0.4.0)                   │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+-- Enchanter Settings section
+L["SettingsAnnounceDE"] = "Announce Item Received for DE"
+L["SettingsAnnounceDEDesc"] = Colors.Gray .. "Post a message in party/raid when you Need an item for disenchanting." .. Colors.Reset
+L["SettingsAnnounceResults"] = "Announce Disenchant Results"
+L["SettingsAnnounceResultsDesc"] = Colors.Gray .. "Post disenchant material results to party/raid chat." .. Colors.Reset
+
+-- Disenchant History section
+L["SettingsSectionEnchanterHistory"] = Colors.iNIF .. "Disenchant History"
+L["EnchanterHistoryEmpty"] = Colors.Gray .. "No disenchants recorded this session." .. Colors.Reset
+L["EnchanterClearHistoryButton"] = "Clear History"
+L["EnchanterHistoryCleared"] = "Disenchant history cleared."
+L["EnchanterSplitButton"] = "Open Split Window"
+
+-- DE Detection + Split (Frames)
+L["EnchanterResultPartyMsg"] = "[iNIF]: Disenchanted -> %s"
+L["EnchanterHistoryItemDE"] = "Disenchanted into: "
+L["EnchanterSplitTitle"] = "Material Split"
+L["EnchanterSplitNoMats"] = "No materials recorded this session."
+L["EnchanterSplitTotal"] = "Total Materials:"
+L["EnchanterSplitPerPlayer"] = "Per Player (%d members):"
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                     Settings Panel - Ninja Detection                          │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["SettingsSectionNinjaDetection"] = Colors.iNIF .. "Ninja Detection"
+L["SettingsNinjaDetection"] = "Enable Ninja Detection"
+L["SettingsNinjaDetectionDesc"] = Colors.Gray .. "Flag when someone rolls Need on armor they cannot equip." .. Colors.Reset
+L["SettingsNinjaAnnounce"] = "Announce Ninja to Party/Raid"
+L["SettingsNinjaAnnounceDesc"] = Colors.Gray .. "Post a warning in party/raid chat when a ninja is detected." .. Colors.Reset
+L["NinjaDetected"] = Colors.Red .. "NINJA: " .. Colors.Reset .. "%s (%s) rolled Need on %s — cannot equip %s armor!"
+L["NinjaPartyMsg"] = "[iNIF]: Warning: %s rolled Need on %s - this class cannot equip %s armor"
+L["NinjaNoIncidents"] = "No ninja incidents recorded this session."
+L["NinjaIncidentsHeader"] = Colors.Red .. "Ninja Incidents:" .. Colors.Reset
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                      Settings Panel - Roll Tracker                            │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["SettingsSectionRollTracker"] = Colors.iNIF .. "Roll Tracker"
+L["SettingsRollTracker"] = "Enable Roll Tracker"
+L["SettingsRollTrackerDesc"] = Colors.Gray .. "Track roll wins per player across the session." .. Colors.Reset
+L["RollTrackerShowButton"] = "Show Luck Meter"
+L["RollTrackerTitle"] = "Roll Luck Tracker"
+L["RollTrackerEmpty"] = "No rolls tracked yet this session."
+L["RollTrackerWins"] = "Wins"
+L["RollTrackerRolls"] = "Rolls"

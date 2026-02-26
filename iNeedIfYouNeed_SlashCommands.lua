@@ -23,7 +23,7 @@ local HasActiveRolls = function(...) return iNIF.HasActiveRolls(...) end
 local UpdateAllCheckboxes = iNIF.UpdateAllCheckboxes
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Slash Commands                                     │
+-- │                            Slash Commands                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 SLASH_iNIF1 = "/inif"
 SlashCmdList["iNIF"] = function(msg)
@@ -64,6 +64,26 @@ SlashCmdList["iNIF"] = function(msg)
         iNIFDB.enchanterMode = not iNIFDB.enchanterMode
         Print(L["SlashEnchanterMode"] .. (iNIFDB.enchanterMode and L["SlashEnabled"] or L["SlashDisabled"]))
         UpdateAllCheckboxes("enchanterMode", iNIFDB.enchanterMode)
+
+    elseif msg == "split" then
+        if iNIF.ToggleSplitWindow then iNIF.ToggleSplitWindow() end
+
+    elseif msg == "luck" or msg == "tracker" then
+        if iNIF.ToggleLuckMeter then iNIF.ToggleLuckMeter() end
+
+    elseif msg == "ninja" then
+        -- Show session ninja incidents
+        if not iNIF.ninjaIncidents or not next(iNIF.ninjaIncidents) then
+            Print(L["NinjaNoIncidents"] or "No ninja incidents recorded this session.")
+            return
+        end
+        print(L["PrintPrefix"] .. (L["NinjaIncidentsHeader"] or Colors.Red .. "Ninja Incidents:" .. Colors.Reset))
+        for name, data in pairs(iNIF.ninjaIncidents) do
+            print("  " .. Colors.Yellow .. name .. Colors.Reset .. ": " .. data.count .. " incidents")
+            for _, inc in ipairs(data.incidents) do
+                print("    - " .. (inc.itemLink or "?") .. " (" .. inc.armorType .. ")")
+            end
+        end
 
     elseif msg == "quickloot" or msg == "ql" then
         if iNIF.SettingsFrame then
@@ -172,6 +192,9 @@ SlashCmdList["iNIF"] = function(msg)
         print("  " .. L["SlashHelpParty"])
         print("  " .. L["SlashHelpRemember"])
         print("  " .. L["SlashHelpEnchanter"])
+        print("  " .. L["SlashHelpSplit"])
+        print("  " .. L["SlashHelpLuck"])
+        print("  " .. L["SlashHelpNinja"])
         print("  " .. L["SlashHelpQuickLoot"])
         print("  " .. L["SlashHelpDebug"])
         print("  " .. L["SlashHelpTest"])

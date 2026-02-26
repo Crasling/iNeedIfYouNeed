@@ -21,7 +21,7 @@ local CheckIfAllGreeded
 local CheckEnchanterMode
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                              Timer Window                                     │
+-- │                              Timer Window                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.CreateTimerWindow()
     -- Main frame
@@ -156,7 +156,7 @@ function iNIF.CreateTimerWindow()
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Utility Functions                                  │
+-- │                            Utility Functions                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.Print(msg)
     if iNIFDB.showNotifications then
@@ -183,7 +183,7 @@ function iNIF.Debug(msg, level)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Helper Functions                                   │
+-- │                            Helper Functions                                    │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
 -- Count number of entries in a table
@@ -212,7 +212,172 @@ local CountTable = function(...) return iNIF.CountTable(...) end
 local HasActiveRolls = function(...) return iNIF.HasActiveRolls(...) end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Checkbox Creation                                  │
+-- │                         Ninja Detection Tables                                │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+-- TBC Classic armor proficiencies: what each class CAN equip
+local CLASS_ARMOR_PROFICIENCY = {
+    WARRIOR     = { Cloth = true, Leather = true, Mail = true, Plate = true },
+    PALADIN     = { Cloth = true, Leather = true, Mail = true, Plate = true },
+    HUNTER      = { Cloth = true, Leather = true, Mail = true },
+    ROGUE       = { Cloth = true, Leather = true },
+    PRIEST      = { Cloth = true },
+    SHAMAN      = { Cloth = true, Leather = true, Mail = true },
+    MAGE        = { Cloth = true },
+    WARLOCK     = { Cloth = true },
+    DRUID       = { Cloth = true, Leather = true },
+}
+
+-- GetItemInfo subclassID → armor type name
+local ARMOR_SUBCLASS = {
+    [1] = "Cloth",
+    [2] = "Leather",
+    [3] = "Mail",
+    [4] = "Plate",
+}
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                      Ninja Detection Functions                                │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+-- Get a group member's english class by name
+function iNIF.GetGroupMemberClass(playerName)
+    local numMembers = GetNumGroupMembers and GetNumGroupMembers() or 0
+    for i = 1, numMembers do
+        local unitID
+        if IsInRaid() then
+            unitID = "raid" .. i
+        else
+            if i < numMembers then
+                unitID = "party" .. i
+            else
+                unitID = "player"
+            end
+        end
+        local name = UnitName(unitID)
+        if name and name == playerName then
+            local _, englishClass = UnitClass(unitID)
+            return englishClass
+        end
+    end
+    return nil
+end
+
+-- Extract item ID from an item link
+local function GetItemIDFromLink(itemLink)
+    if not itemLink then return nil end
+    local itemID = itemLink:match("item:(%d+)")
+    return tonumber(itemID)
+end
+
+-- Check if a Need roll is a ninja (wrong armor type)
+function iNIF.CheckNinjaForItem(playerName, playerClass, itemLink, retries)
+    if not iNIFDB.ninjaDetection then return end
+    retries = retries or 0
+
+    local itemID = GetItemIDFromLink(itemLink)
+    if not itemID then return end
+
+    local name, link, quality, itemLevel, reqLevel, itemType, itemSubType,
+          stackCount, equipLoc, texture, sellPrice, classID, subclassID = GetItemInfo(itemID)
+
+    if not classID then
+        -- Item not cached yet, retry after a short delay (max 2 retries)
+        if retries < 2 then
+            C_Timer.After(0.5, function()
+                iNIF.CheckNinjaForItem(playerName, playerClass, itemLink, retries + 1)
+            end)
+        end
+        return
+    end
+
+    -- Only check armor items (classID 4, subclassID 1-4: Cloth/Leather/Mail/Plate)
+    if classID ~= 4 or subclassID < 1 or subclassID > 4 then
+        return
+    end
+
+    local armorType = ARMOR_SUBCLASS[subclassID]
+    local proficiency = CLASS_ARMOR_PROFICIENCY[playerClass]
+
+    if proficiency and armorType and not proficiency[armorType] then
+        -- NINJA DETECTED
+        iNIF.OnNinjaDetected(playerName, playerClass, itemLink, armorType)
+    end
+end
+
+-- Handle a detected ninja
+function iNIF.OnNinjaDetected(playerName, playerClass, itemLink, armorType)
+    Debug("NINJA DETECTED: " .. playerName .. " (" .. playerClass .. ") rolled Need on " .. armorType .. " armor: " .. (itemLink or "?"), 2)
+
+    -- Record incident
+    if not iNIF.ninjaIncidents[playerName] then
+        iNIF.ninjaIncidents[playerName] = { count = 0, incidents = {} }
+    end
+    iNIF.ninjaIncidents[playerName].count = iNIF.ninjaIncidents[playerName].count + 1
+    table.insert(iNIF.ninjaIncidents[playerName].incidents, {
+        itemLink = itemLink,
+        armorType = armorType,
+        timestamp = GetTime(),
+    })
+
+    -- Print local warning
+    local warningMsg = string.format(
+        L["NinjaDetected"] or (Colors.Red .. "NINJA: " .. Colors.Reset .. "%s (%s) rolled Need on %s — cannot equip %s armor!"),
+        playerName, playerClass, itemLink or "?", armorType
+    )
+    print(L["PrintPrefix"] .. warningMsg)
+
+    -- Announce to party/raid if enabled
+    if iNIFDB.ninjaAnnounce and (IsInGroup() or IsInRaid()) then
+        local channel = IsInRaid() and "RAID" or "PARTY"
+        local partyMsg = string.format(
+            L["NinjaPartyMsg"] or "[iNIF]: Warning: %s rolled Need on %s - this class cannot equip %s armor",
+            playerName, itemLink or "?", armorType
+        )
+        C_Timer.After(0.5, function()
+            SendChatMessage(partyMsg, channel)
+        end)
+    end
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                       Roll Fairness Tracking                                  │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+-- Track that a player participated in a roll
+function iNIF.TrackRollParticipation(playerName, rollID, rollType)
+    if not iNIFDB.rollTracker then return end
+
+    if not iNIF.rollTracker.players[playerName] then
+        iNIF.rollTracker.players[playerName] = { wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
+    end
+    iNIF.rollTracker.players[playerName].rolls = iNIF.rollTracker.players[playerName].rolls + 1
+    iNIF.rollTracker.totalRolls = iNIF.rollTracker.totalRolls + 1
+end
+
+-- Track that a player won a roll
+function iNIF.TrackRollWin(playerName, itemLink)
+    if not iNIFDB.rollTracker then return end
+
+    if not iNIF.rollTracker.players[playerName] then
+        iNIF.rollTracker.players[playerName] = { wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
+    end
+    iNIF.rollTracker.players[playerName].wins = iNIF.rollTracker.players[playerName].wins + 1
+
+    table.insert(iNIF.rollTracker.history, {
+        itemLink = itemLink,
+        winner = playerName,
+        timestamp = GetTime(),
+    })
+
+    Debug("Roll win tracked: " .. playerName .. " won " .. (itemLink or "?"), 3)
+
+    -- Update luck meter if visible
+    if iNIF.UpdateLuckMeter then iNIF.UpdateLuckMeter() end
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                            Checkbox Creation                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 local function CreateCheckbox(parent, rollID)
     -- Create checkbox with larger size for better visibility
@@ -293,7 +458,7 @@ local function CreateCheckbox(parent, rollID)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                         Roll Processing Functions                             │
+-- │                         Roll Processing Functions                              │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 local function ProcessRoll(rollID)
     local roll = activeRolls[rollID]
@@ -323,7 +488,7 @@ local function ProcessRoll(rollID)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                           AceComm Handler                                     │
+-- │                           AceComm Handler                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF:OnCommReceived(prefix, message, distribution, sender)
     -- Only process iNIF prefix
@@ -400,7 +565,7 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Decision Logic                                     │
+-- │                            Decision Logic                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
 -- Helper function to check if all party members have greeded
@@ -495,7 +660,7 @@ CheckIfAllINIFGreeded = function(rollID)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                             Enchanter Mode                                    │
+-- │                             Enchanter Mode                                     │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 CheckEnchanterMode = function(rollID)
     local roll = activeRolls[rollID]
@@ -560,7 +725,7 @@ CheckEnchanterMode = function(rollID)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                        Loot Roll Frame Enhancement                            │
+-- │                        Loot Roll Frame Enhancement                             │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.EnhanceRollFrame(frame, rollID)
     if not frame then
@@ -740,7 +905,7 @@ function iNIF.EnhanceRollFrame(frame, rollID)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                     Roll Monitoring (CHAT_MSG_LOOT)                           │
+-- │                     Roll Monitoring (CHAT_MSG_LOOT)                            │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 -- GetLootRollItemInfo is broken in Classic - use chat messages instead
 -- This function is called when we detect a Need from CHAT_MSG_LOOT
@@ -763,6 +928,17 @@ function iNIF.OnNeedDetected(playerName, itemLink)
                     Debug("Need from OTHER PLAYER: " .. playerName)
                     roll.needDetected = true
                     roll.neededBy = playerName
+
+                    -- Ninja detection: check if this player can equip the item
+                    if iNIFDB.ninjaDetection then
+                        local playerClass = iNIF.GetGroupMemberClass(playerName)
+                        if playerClass then
+                            iNIF.CheckNinjaForItem(playerName, playerClass, roll.itemLink)
+                        end
+                    end
+
+                    -- Roll tracking: track participation
+                    iNIF.TrackRollParticipation(playerName, rollID, "need")
 
                     -- Enchanter Mode: someone needs → skip (don't need back, let them have it)
                     if iNIFDB.enchanterMode then
@@ -830,6 +1006,9 @@ function iNIF.OnGreedDetected(playerName, itemLink)
                     roll.greedRolls[playerName] = true
                     Debug("Tracked Greed from " .. playerName .. " for rollID " .. rollID)
 
+                    -- Roll tracking: track participation
+                    iNIF.TrackRollParticipation(playerName, rollID, "greed")
+
                     -- Only check if everyone greeded/decided if we're actively monitoring
                     if roll.checkboxEnabled and roll.greedClicked then
                         if iNIFDB.enchanterMode then
@@ -868,6 +1047,9 @@ function iNIF.OnPassDetected(playerName, itemLink)
                     roll.passRolls[playerName] = true
                     Debug("Tracked Pass from " .. playerName .. " for rollID " .. rollID)
 
+                    -- Roll tracking: track participation
+                    iNIF.TrackRollParticipation(playerName, rollID, "pass")
+
                     -- Only check if everyone decided if we're actively monitoring
                     if roll.checkboxEnabled and roll.greedClicked then
                         if iNIFDB.enchanterMode then
@@ -886,7 +1068,7 @@ function iNIF.OnPassDetected(playerName, itemLink)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Frame Update Loop                                  │
+-- │                            Frame Update Loop                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 local updateTimer = 0
 local function OnUpdate(self, elapsed)

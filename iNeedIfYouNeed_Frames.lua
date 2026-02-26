@@ -27,12 +27,15 @@ local CountTable = function(...) return iNIF.CountTable(...) end
 local UpdateAllCheckboxes = iNIF.UpdateAllCheckboxes
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                             Event Handler                                     │
+-- │                             Event Handler                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local loadedAddon = ...
         if loadedAddon == addonName then
+            -- Backfill new saved variable defaults for upgrading users
+            iNIF.ApplyDynamicDefaults()
+
             -- Initialize AceComm
             if AceComm then
                 AceComm:Embed(iNIF)
@@ -47,6 +50,19 @@ local function OnEvent(self, event, ...)
             -- Delayed startup message (like iWR) - always shows, no severity prefix
             C_Timer.After(2, function()
                 print(L["DebugPrefix"] .. string.format(L["StartupMessage"], Title, Colors.Green .. "v" .. Version .. Colors.iNIF))
+
+                -- Welcome message (once per version)
+                if iNIFDB.WelcomeMessage ~= Version then
+                    local playerName = UnitName("player")
+                    local _, class = UnitClass("player")
+                    local classColor = "|cFFFFFFFF"
+                    if class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+                        local c = RAID_CLASS_COLORS[class]
+                        classColor = string.format("|cFF%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255)
+                    end
+                    print(L["WelcomeStart"] .. classColor .. playerName .. L["WelcomeEnd"])
+                    iNIFDB.WelcomeMessage = Version
+                end
             end)
         end
 
@@ -241,8 +257,56 @@ local function OnEvent(self, event, ...)
             return
         end
 
-        -- Unmatched message
-        Debug("CHAT_MSG_LOOT (not matched): " .. message)
+        -- Pattern: "You receive loot: [Item Link]" or "PlayerName receives loot: [Item Link]"
+        local selfLootLink = cleanMessage:match("^You receive loot:%s*(.+)%.$")
+        if not selfLootLink then
+            selfLootLink = cleanMessage:match("^You receive loot:%s*(.+)$")
+        end
+        if selfLootLink then
+            -- Parse count from "xN" suffix
+            local matLink, matCount = selfLootLink:match("^(.-)x(%d+)$")
+            if not matLink then
+                matLink = selfLootLink
+                matCount = 1
+            else
+                matCount = tonumber(matCount) or 1
+            end
+
+            -- Check if this is a disenchant result (pending DE within 3 second window)
+            if iNIF.pendingDisenchant and (GetTime() - iNIF.pendingDisenchant.timestamp) < 3 then
+                iNIF.OnDisenchantResult(matLink, matCount)
+            end
+
+            -- Roll win tracking: check if this matches a recently completed roll
+            if iNIFDB.rollTracker then
+                local myName = UnitName("player")
+                iNIF.TrackRollWin(myName, matLink)
+            end
+        end
+
+        -- Pattern: "PlayerName receives loot: [Item Link]" (other players winning rolls)
+        local otherPlayer, otherLootLink = cleanMessage:match("^(.-)%s+receives loot:%s*(.+)%.$")
+        if not otherPlayer then
+            otherPlayer, otherLootLink = cleanMessage:match("^(.-)%s+receives loot:%s*(.+)$")
+        end
+        if otherPlayer and otherLootLink then
+            otherPlayer = otherPlayer:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+            if iNIFDB.rollTracker then
+                iNIF.TrackRollWin(otherPlayer, otherLootLink)
+            end
+        end
+
+        -- Unmatched message (only log if not a loot receive)
+        if not selfLootLink and not otherPlayer then
+            Debug("CHAT_MSG_LOOT (not matched): " .. message)
+        end
+
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unitTarget, castGUID, spellID = ...
+        -- Disenchant spell ID: 13262
+        if unitTarget == "player" and spellID == 13262 then
+            iNIF.OnDisenchantCast()
+        end
 
     elseif event == "LOOT_BIND_CONFIRM" then
         local slot = ...
@@ -294,10 +358,11 @@ iNIF.eventFrame:RegisterEvent("START_LOOT_ROLL")
 iNIF.eventFrame:RegisterEvent("CANCEL_LOOT_ROLL")
 iNIF.eventFrame:RegisterEvent("CHAT_MSG_LOOT")
 iNIF.eventFrame:RegisterEvent("LOOT_BIND_CONFIRM")
+iNIF.eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 iNIF.eventFrame:SetScript("OnEvent", OnEvent)
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                            Custom Menu Frame                                  │
+-- │                            Custom Menu Frame                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
 -- Create the main menu panel
@@ -481,7 +546,7 @@ iNIFMenuPanel:SetScript("OnShow", function()
 end)
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                          Menu Toggle Functions                                │
+-- │                          Menu Toggle Functions                                 │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.MenuToggle()
     if iNIF.InCombat then print(L["InCombat"]) return end
@@ -502,7 +567,402 @@ function iNIF.MenuOpen()
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                              Minimap Icon                                     │
+-- │                       Disenchant Detection Functions                           │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+-- Called when UNIT_SPELLCAST_SUCCEEDED fires with Disenchant (spellID 13262)
+function iNIF.OnDisenchantCast()
+    Debug("Disenchant cast completed", 3)
+    iNIF.pendingDisenchant = {
+        timestamp = GetTime(),
+        mats = {},
+    }
+    -- Clear pending after 3 seconds
+    C_Timer.After(3, function()
+        if iNIF.pendingDisenchant then
+            -- If mats were collected, finalize the record
+            if #iNIF.pendingDisenchant.mats > 0 then
+                iNIF.RecordDisenchant(iNIF.pendingDisenchant.mats)
+            end
+            iNIF.pendingDisenchant = nil
+        end
+    end)
+end
+
+-- Called when "You receive loot:" matches within DE window
+function iNIF.OnDisenchantResult(matLink, count)
+    if not iNIF.pendingDisenchant then return end
+    Debug("DE result: " .. count .. "x " .. (matLink or "?"), 3)
+    table.insert(iNIF.pendingDisenchant.mats, { matLink = matLink, count = count })
+end
+
+-- Record a completed disenchant to history and totals
+function iNIF.RecordDisenchant(mats)
+    if not mats or #mats == 0 then return end
+
+    -- Add to session history
+    table.insert(iNIF.enchanterHistory, {
+        itemLink = nil, -- We don't easily know which item was DEd from the event alone
+        mats = mats,
+        timestamp = GetTime(),
+    })
+
+    -- Update running totals
+    for _, mat in ipairs(mats) do
+        local matName = mat.matLink or "Unknown"
+        -- Strip color codes to get clean name for totals key
+        local cleanName = matName:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+        if not iNIF.enchanterMatTotals[cleanName] then
+            iNIF.enchanterMatTotals[cleanName] = { link = mat.matLink, count = 0 }
+        end
+        iNIF.enchanterMatTotals[cleanName].count = iNIF.enchanterMatTotals[cleanName].count + mat.count
+    end
+
+    -- Announce to party/raid if enabled
+    if iNIFDB.enchanterAnnounceResults and (IsInGroup() or IsInRaid()) then
+        local channel = IsInRaid() and "RAID" or "PARTY"
+        local matStr = ""
+        for _, mat in ipairs(mats) do
+            if matStr ~= "" then matStr = matStr .. ", " end
+            matStr = matStr .. mat.count .. "x " .. (mat.matLink or "?")
+        end
+        local msg = string.format(L["EnchanterResultPartyMsg"] or "[iNIF]: Disenchanted -> %s", matStr)
+        C_Timer.After(0.5, function()
+            SendChatMessage(msg, channel)
+        end)
+    end
+
+    -- Chat notification
+    local matStr = ""
+    for _, mat in ipairs(mats) do
+        if matStr ~= "" then matStr = matStr .. ", " end
+        matStr = matStr .. mat.count .. "x " .. (mat.matLink or "?")
+    end
+    Print((L["EnchanterHistoryItemDE"] or "Disenchanted into: ") .. matStr)
+
+    -- Refresh history display if open
+    if iNIF.RefreshEnchanterHistory then iNIF.RefreshEnchanterHistory() end
+
+    Debug("Recorded disenchant: " .. #mats .. " material types", 3)
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                         Split Calculator Window                               │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+function iNIF.CreateSplitWindow()
+    local frame = CreateFrame("Frame", "iNIFSplitWindow", UIParent, "BackdropTemplate")
+    frame:SetSize(320, 250)
+    frame:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 32,
+        insets = {left = 11, right = 12, top = 12, bottom = 11},
+    })
+    frame:SetBackdropColor(0, 0, 0, 0.95)
+    frame:SetBackdropBorderColor(1, 0.59, 0.09, 1)
+    frame:SetFrameStrata("HIGH")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:SetClampedToScreen(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    frame:Hide()
+
+    -- Title
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", frame, "TOP", 0, -14)
+    title:SetText(Colors.iNIF .. (L["EnchanterSplitTitle"] or "Material Split"))
+
+    -- Close button
+    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
+    closeBtn:SetSize(24, 24)
+    closeBtn:SetScript("OnClick", function() frame:Hide() end)
+
+    -- Content area
+    local content = CreateFrame("Frame", nil, frame)
+    content:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -40)
+    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -15, 15)
+
+    frame.contentTexts = {}
+
+    frame.Refresh = function()
+        -- Clear old texts
+        for _, text in pairs(frame.contentTexts) do
+            text:Hide()
+        end
+
+        local yOfs = 0
+        local count = 0
+
+        if not iNIF.enchanterMatTotals or not next(iNIF.enchanterMatTotals) then
+            count = count + 1
+            if not frame.contentTexts[count] then
+                frame.contentTexts[count] = content:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+                frame.contentTexts[count]:SetWidth(280)
+                frame.contentTexts[count]:SetJustifyH("LEFT")
+            end
+            frame.contentTexts[count]:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOfs)
+            frame.contentTexts[count]:SetText(L["EnchanterSplitNoMats"] or "No materials recorded this session.")
+            frame.contentTexts[count]:Show()
+            return
+        end
+
+        -- Total header
+        count = count + 1
+        if not frame.contentTexts[count] then
+            frame.contentTexts[count] = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            frame.contentTexts[count]:SetWidth(280)
+            frame.contentTexts[count]:SetJustifyH("LEFT")
+        end
+        frame.contentTexts[count]:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOfs)
+        frame.contentTexts[count]:SetText(Colors.iNIF .. (L["EnchanterSplitTotal"] or "Total Materials:"))
+        frame.contentTexts[count]:Show()
+        yOfs = yOfs - 18
+
+        -- List totals
+        for matName, data in pairs(iNIF.enchanterMatTotals) do
+            count = count + 1
+            if not frame.contentTexts[count] then
+                frame.contentTexts[count] = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                frame.contentTexts[count]:SetWidth(280)
+                frame.contentTexts[count]:SetJustifyH("LEFT")
+            end
+            frame.contentTexts[count]:SetPoint("TOPLEFT", content, "TOPLEFT", 10, yOfs)
+            frame.contentTexts[count]:SetText(data.count .. "x " .. (data.link or matName))
+            frame.contentTexts[count]:Show()
+            yOfs = yOfs - 16
+        end
+
+        -- Per player split
+        local groupSize = GetNumGroupMembers and GetNumGroupMembers() or 1
+        if groupSize > 1 then
+            yOfs = yOfs - 8
+            count = count + 1
+            if not frame.contentTexts[count] then
+                frame.contentTexts[count] = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+                frame.contentTexts[count]:SetWidth(280)
+                frame.contentTexts[count]:SetJustifyH("LEFT")
+            end
+            frame.contentTexts[count]:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOfs)
+            frame.contentTexts[count]:SetText(Colors.iNIF .. string.format(L["EnchanterSplitPerPlayer"] or "Per Player (%d members):", groupSize))
+            frame.contentTexts[count]:Show()
+            yOfs = yOfs - 18
+
+            for matName, data in pairs(iNIF.enchanterMatTotals) do
+                local perPlayer = math.floor(data.count / groupSize)
+                local remainder = data.count % groupSize
+                count = count + 1
+                if not frame.contentTexts[count] then
+                    frame.contentTexts[count] = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                    frame.contentTexts[count]:SetWidth(280)
+                    frame.contentTexts[count]:SetJustifyH("LEFT")
+                end
+                frame.contentTexts[count]:SetPoint("TOPLEFT", content, "TOPLEFT", 10, yOfs)
+                local splitText = perPlayer .. "x " .. (data.link or matName)
+                if remainder > 0 then
+                    splitText = splitText .. " (+" .. remainder .. " remainder)"
+                end
+                frame.contentTexts[count]:SetText(splitText)
+                frame.contentTexts[count]:Show()
+                yOfs = yOfs - 16
+            end
+        end
+
+        -- Adjust height
+        local newHeight = 55 + math.abs(yOfs)
+        if newHeight < 100 then newHeight = 100 end
+        if newHeight > 400 then newHeight = 400 end
+        frame:SetHeight(newHeight)
+    end
+
+    return frame
+end
+
+-- Split window toggle
+function iNIF.ToggleSplitWindow()
+    if not iNIF.splitWindow then
+        iNIF.splitWindow = iNIF.CreateSplitWindow()
+    end
+    if iNIF.splitWindow:IsShown() then
+        iNIF.splitWindow:Hide()
+    else
+        iNIF.splitWindow:Refresh()
+        iNIF.splitWindow:Show()
+    end
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                           Luck Meter Window                                   │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+function iNIF.CreateLuckMeterWindow()
+    local frame = CreateFrame("Frame", "iNIFLuckMeter", UIParent, "BackdropTemplate")
+    frame:SetSize(280, 200)
+    frame:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 32,
+        insets = {left = 11, right = 12, top = 12, bottom = 11},
+    })
+    frame:SetBackdropColor(0, 0, 0, 0.95)
+    frame:SetBackdropBorderColor(1, 0.59, 0.09, 1)
+    frame:SetFrameStrata("HIGH")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:SetClampedToScreen(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    frame:Hide()
+
+    -- Title
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", frame, "TOP", 0, -14)
+    title:SetText(Colors.iNIF .. (L["RollTrackerTitle"] or "Roll Luck Tracker"))
+
+    -- Close button
+    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
+    closeBtn:SetSize(24, 24)
+    closeBtn:SetScript("OnClick", function() frame:Hide() end)
+
+    -- Content area
+    local content = CreateFrame("Frame", nil, frame)
+    content:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -40)
+    content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -15, 15)
+
+    frame.rows = {}
+
+    frame.Refresh = function()
+        -- Clear old rows
+        for _, row in pairs(frame.rows) do
+            if row.text then row.text:Hide() end
+            if row.bar then row.bar:Hide() end
+            if row.barBg then row.barBg:Hide() end
+        end
+
+        local yOfs = 0
+        local count = 0
+        local players = iNIF.rollTracker.players
+
+        if not players or not next(players) then
+            count = count + 1
+            if not frame.rows[count] then frame.rows[count] = {} end
+            if not frame.rows[count].text then
+                frame.rows[count].text = content:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+                frame.rows[count].text:SetWidth(240)
+                frame.rows[count].text:SetJustifyH("LEFT")
+            end
+            frame.rows[count].text:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOfs)
+            frame.rows[count].text:SetText(L["RollTrackerEmpty"] or "No rolls tracked yet this session.")
+            frame.rows[count].text:Show()
+            return
+        end
+
+        -- Sort players by wins (descending)
+        local sorted = {}
+        for name, data in pairs(players) do
+            table.insert(sorted, { name = name, wins = data.wins, rolls = data.rolls })
+        end
+        table.sort(sorted, function(a, b) return a.wins > b.wins end)
+
+        -- Header
+        count = count + 1
+        if not frame.rows[count] then frame.rows[count] = {} end
+        if not frame.rows[count].text then
+            frame.rows[count].text = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            frame.rows[count].text:SetWidth(240)
+            frame.rows[count].text:SetJustifyH("LEFT")
+        end
+        frame.rows[count].text:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOfs)
+        frame.rows[count].text:SetText(Colors.Yellow .. "Player" .. Colors.Reset .. string.rep(" ", 18) .. (L["RollTrackerWins"] or "Wins") .. " / " .. (L["RollTrackerRolls"] or "Rolls"))
+        frame.rows[count].text:Show()
+        yOfs = yOfs - 18
+
+        local barWidth = 80
+
+        for _, entry in ipairs(sorted) do
+            count = count + 1
+            if not frame.rows[count] then frame.rows[count] = {} end
+
+            -- Text: "PlayerName  W/R"
+            if not frame.rows[count].text then
+                frame.rows[count].text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                frame.rows[count].text:SetWidth(150)
+                frame.rows[count].text:SetJustifyH("LEFT")
+            end
+            frame.rows[count].text:SetPoint("TOPLEFT", content, "TOPLEFT", 0, yOfs)
+            frame.rows[count].text:SetText(entry.name .. "  " .. entry.wins .. "/" .. entry.rolls)
+            frame.rows[count].text:Show()
+
+            -- Luck bar background
+            if not frame.rows[count].barBg then
+                frame.rows[count].barBg = content:CreateTexture(nil, "BACKGROUND")
+            end
+            frame.rows[count].barBg:SetSize(barWidth, 10)
+            frame.rows[count].barBg:SetPoint("TOPLEFT", content, "TOPLEFT", 155, yOfs - 2)
+            frame.rows[count].barBg:SetColorTexture(0.2, 0.2, 0.2, 0.6)
+            frame.rows[count].barBg:Show()
+
+            -- Luck bar fill
+            if not frame.rows[count].bar then
+                frame.rows[count].bar = content:CreateTexture(nil, "ARTWORK")
+            end
+            local luck = entry.rolls > 0 and (entry.wins / entry.rolls) or 0
+            local fillWidth = math.max(1, barWidth * luck)
+            frame.rows[count].bar:SetSize(fillWidth, 10)
+            frame.rows[count].bar:SetPoint("TOPLEFT", content, "TOPLEFT", 155, yOfs - 2)
+
+            -- Color: green=lucky, yellow=average, red=unlucky
+            if luck > 0.3 then
+                frame.rows[count].bar:SetColorTexture(0.2, 0.8, 0.2, 0.8) -- Green
+            elseif luck > 0.15 then
+                frame.rows[count].bar:SetColorTexture(1, 0.8, 0, 0.8) -- Yellow
+            else
+                frame.rows[count].bar:SetColorTexture(0.8, 0.2, 0.2, 0.8) -- Red
+            end
+            frame.rows[count].bar:Show()
+
+            yOfs = yOfs - 18
+        end
+
+        -- Adjust height
+        local newHeight = 55 + math.abs(yOfs)
+        if newHeight < 100 then newHeight = 100 end
+        if newHeight > 400 then newHeight = 400 end
+        frame:SetHeight(newHeight)
+    end
+
+    return frame
+end
+
+-- Luck meter toggle
+function iNIF.ToggleLuckMeter()
+    if not iNIF.luckMeterWindow then
+        iNIF.luckMeterWindow = iNIF.CreateLuckMeterWindow()
+    end
+    if iNIF.luckMeterWindow:IsShown() then
+        iNIF.luckMeterWindow:Hide()
+    else
+        iNIF.luckMeterWindow:Refresh()
+        iNIF.luckMeterWindow:Show()
+    end
+end
+
+-- Update luck meter (called when a win is tracked)
+function iNIF.UpdateLuckMeter()
+    if iNIF.luckMeterWindow and iNIF.luckMeterWindow:IsShown() then
+        iNIF.luckMeterWindow:Refresh()
+    end
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                              Minimap Icon                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
 -- Create minimap button (following iWR pattern)
