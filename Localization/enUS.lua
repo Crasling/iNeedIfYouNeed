@@ -232,6 +232,19 @@ L["ISPInstalledDesc1"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " is i
 L["ISPInstalledDesc2"] = Colors.Gray .. "Note: These settings are managed by iSP and will affect the iSP addon." .. Colors.Reset
 L["ISPOpenSettingsButton"] = "Open iSP Settings"
 
+-- iCC tab
+L["Tab7iCC"] = "iCC Settings"
+L["Tab7iCCPromo"] = "iCommunityChat"
+L["ErroriCCNotFound"] = "iCC addon not found or settings not initialized!"
+
+-- iCC Promo (when NOT installed)
+L["ICCPromoDesc"] = Colors.iNIF .. "iCommunityChat" .. Colors.Reset .. " is a cross-guild community addon. Create and manage custom communities with shared chat, roster, and ranks — beyond guild boundaries.\n\n" .. Colors.Reset .. "Your community, your chat."
+L["ICCPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/icommunitychat"
+
+-- iCC Settings (when installed)
+L["ICCInstalledDesc"] = Colors.iNIF .. "iCommunityChat" .. Colors.Reset .. " is installed! You can access iCC settings from here.\n\n" .. Colors.Gray .. "Note: These settings are managed by iCC and will affect the iCC addon." .. Colors.Reset
+L["ICCOpenSettingsButton"] = "Open iCC Settings"
+
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                      Menu Panel (Minimap Right-Click)                          │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
@@ -361,3 +374,9 @@ L["RollTrackerTitle"] = "Roll Luck Tracker"
 L["RollTrackerEmpty"] = "No rolls tracked yet this session."
 L["RollTrackerWins"] = "Wins"
 L["RollTrackerRolls"] = "Rolls"
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                                Chat Output                                    │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["SectionChatOutput"] = "Chat Output"
+L["ChatFrameAlwaysOn"] = "(always on)"

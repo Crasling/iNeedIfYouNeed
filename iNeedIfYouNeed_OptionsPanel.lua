@@ -9,6 +9,7 @@
 
 local addonName, iNIF = ...
 local L = iNIF.L or {}  -- Load localization table with fallback
+local print = function(...) iNIF.PrintToChat(...) end
 
 -- Local aliases
 local Colors = iNIF.Colors
@@ -233,8 +234,9 @@ function iNIF.CreateOptionsPanel()
     local aboutContainer, aboutContent = CreateTabContent()
     local iWRContainer, iWRContent = CreateTabContent()
     local iSPContainer, iSPContent = CreateTabContent()
+    local iCCContainer, iCCContent = CreateTabContent()
 
-    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer}
+    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer, iCCContainer}
 
     local sidebarButtons = {}
     local activeIndex = 1
@@ -267,6 +269,7 @@ function iNIF.CreateOptionsPanel()
         {type = "header", label = L["SidebarHeaderOtherAddons"]},
         {type = "tab", label = L["Tab5iWR"] or L["Tab3iWR"], index = 5},
         {type = "tab", label = L["Tab6iSP"] or L["Tab4iSP"], index = 6},
+        {type = "tab", label = L["Tab7iCCPromo"] or "iCommunityChat", index = 7},
     }
 
     local sidebarY = -6
@@ -376,6 +379,41 @@ function iNIF.CreateOptionsPanel()
         if iNIF.ToggleLuckMeter then iNIF.ToggleLuckMeter() end
     end)
     y = y - 30
+
+    -- Section: Chat Output
+    _, y = CreateSectionHeader(generalContent, L["SectionChatOutput"], y - 6)
+
+    local generalChatCb = CreateFrame("CheckButton", nil, generalContent, "InterfaceOptionsCheckButtonTemplate")
+    generalChatCb:SetPoint("TOPLEFT", generalContent, "TOPLEFT", 20, y)
+    if not generalChatCb.Text then
+        generalChatCb.Text = generalChatCb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        generalChatCb.Text:SetPoint("LEFT", generalChatCb, "RIGHT", 4, 0)
+    end
+    generalChatCb.Text:SetText("|cFF808080General " .. (L["ChatFrameAlwaysOn"] or "(always on)") .. Colors.Reset)
+    generalChatCb:SetChecked(true)
+    generalChatCb:Disable()
+    y = y - 22
+
+    if not iNIFDB.ChatFrames then iNIFDB.ChatFrames = {} end
+    local skipTabs = { ["Combat Log"] = true, ["Voice"] = true }
+    for i = 2, NUM_CHAT_WINDOWS do
+        local name = GetChatWindowInfo(i)
+        if name and name ~= "" and not skipTabs[name] then
+            local frameIndex = i
+            local cb = CreateFrame("CheckButton", nil, generalContent, "InterfaceOptionsCheckButtonTemplate")
+            cb:SetPoint("TOPLEFT", generalContent, "TOPLEFT", 20, y)
+            if not cb.Text then
+                cb.Text = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                cb.Text:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+            end
+            cb.Text:SetText(name)
+            cb:SetChecked(iNIFDB.ChatFrames[frameIndex] or false)
+            cb:SetScript("OnClick", function(self)
+                iNIFDB.ChatFrames[frameIndex] = self:GetChecked() and true or false
+            end)
+            y = y - 22
+        end
+    end
 
     scrollChildren[1]:SetHeight(math.abs(y) + 20)
 
@@ -963,6 +1001,63 @@ function iNIF.CreateOptionsPanel()
         y, "GameFontDisableSmall")
 
     -- ╭────────────────────────────────────────────────────────────────────────────╮
+    -- │                          iCC Settings Tab                                 │
+    -- │              (both variants built, toggled OnShow)                         │
+    -- ╰────────────────────────────────────────────────────────────────────────────╯
+
+    -- Create INSTALLED variant frame
+    local iCCInstalledFrame = CreateFrame("Frame", nil, iCCContent)
+    iCCInstalledFrame:SetAllPoints(iCCContent)
+    iCCInstalledFrame:Hide()
+
+    y = -10
+    _, y = CreateSectionHeader(iCCInstalledFrame, Colors.iNIF .. "iCommunityChat Settings", y)
+
+    local iCCDesc
+    iCCDesc, y = CreateInfoText(iCCInstalledFrame,
+        L["ICCInstalledDesc"],
+        y, "GameFontHighlight")
+
+    y = y - 10
+
+    local iCCOpenBtn = CreateFrame("Button", nil, iCCInstalledFrame, "UIPanelButtonTemplate")
+    iCCOpenBtn:SetSize(180, 28)
+    iCCOpenBtn:SetPoint("TOPLEFT", iCCInstalledFrame, "TOPLEFT", 25, y)
+    iCCOpenBtn:SetText(L["ICCOpenSettingsButton"])
+    iCCOpenBtn:SetScript("OnClick", function()
+        local iCCFrame = _G.iCC and _G.iCC.SettingsFrame
+        if iCCFrame then
+            local point, _, relPoint, xOfs, yOfs = settingsFrame:GetPoint()
+            iCCFrame:ClearAllPoints()
+            iCCFrame:SetPoint(point, UIParent, relPoint, xOfs, yOfs)
+            settingsFrame:Hide()
+            iCCFrame:Show()
+        else
+            Print(Colors.Red .. L["ErroriCCNotFound"])
+        end
+    end)
+
+    -- Create PROMO variant frame (always created, hidden initially)
+    local iCCPromoFrame = CreateFrame("Frame", nil, iCCContent)
+    iCCPromoFrame:SetAllPoints(iCCContent)
+    iCCPromoFrame:Hide()
+
+    y = -10
+    _, y = CreateSectionHeader(iCCPromoFrame, Colors.iNIF .. "iCommunityChat", y)
+
+    local iCCPromo
+    iCCPromo, y = CreateInfoText(iCCPromoFrame,
+        L["ICCPromoDesc"],
+        y, "GameFontHighlight")
+
+    y = y - 4
+
+    local iCCPromoLink
+    iCCPromoLink, y = CreateInfoText(iCCPromoFrame,
+        L["ICCPromoLink"],
+        y, "GameFontDisableSmall")
+
+    -- ╭────────────────────────────────────────────────────────────────────────────╮
     -- │                     Blizzard Interface Options Stub                        │
     -- ╰────────────────────────────────────────────────────────────────────────────╯
     local stubPanel = CreateFrame("Frame", "iNIFOptionsPanel", UIParent)
@@ -1001,6 +1096,9 @@ function iNIF.CreateOptionsPanel()
         local iWRFrame = _G.iWR and _G.iWR.SettingsFrame
         if iWRFrame and iWRFrame:IsShown() then iWRFrame:Hide() end
 
+        local iCCFrame = _G.iCC and _G.iCC.SettingsFrame
+        if iCCFrame and iCCFrame:IsShown() then iCCFrame:Hide() end
+
         -- Refresh checkboxes
         for key, cb in pairs(checkboxRefs) do
             if iNIFDB[key] ~= nil then
@@ -1025,6 +1123,15 @@ function iNIF.CreateOptionsPanel()
         -- Update iSP sidebar button text
         if sidebarButtons[6] then
             sidebarButtons[6].text:SetText(iSPLoaded and (L["Tab6iSP"] or L["Tab4iSP"]) or L["Tab4iSPPromo"])
+        end
+
+        local iCCLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iCommunityChat")
+        iCCInstalledFrame:SetShown(iCCLoaded)
+        iCCPromoFrame:SetShown(not iCCLoaded)
+
+        -- Update iCC sidebar button text
+        if sidebarButtons[7] then
+            sidebarButtons[7].text:SetText(iCCLoaded and L["Tab7iCC"] or (L["Tab7iCCPromo"] or "iCommunityChat"))
         end
 
         -- Refresh disenchant history when settings open

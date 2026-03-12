@@ -43,6 +43,7 @@ if not iNIFDB then
         ninjaDetection = true, -- Enable ninja detection (flag wrong armor type needs)
         ninjaAnnounce = false, -- Announce ninja to party/raid (off by default)
         rollTracker = true, -- Enable roll fairness tracking
+        ChatFrames = {}, -- Chat Output Routing
         minimapButton = {
             hide = false,
             minimapPos = -30

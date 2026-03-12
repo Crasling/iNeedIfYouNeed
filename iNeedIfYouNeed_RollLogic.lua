@@ -10,6 +10,23 @@
 local addonName, iNIF = ...
 local L = iNIF.L or {}  -- Load localization table with fallback
 
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                                Chat Output Routing                             │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+function iNIF.PrintToChat(...)
+    local msg = table.concat({tostringall(...)}, " ")
+    if ChatFrame1 then ChatFrame1:AddMessage(msg) end
+    local frames = iNIFDB and iNIFDB.ChatFrames or {}
+    for i = 2, NUM_CHAT_WINDOWS do
+        if frames[i] then
+            local cf = _G["ChatFrame" .. i]
+            if cf then cf:AddMessage(msg) end
+        end
+    end
+end
+
+local print = function(...) iNIF.PrintToChat(...) end
+
 -- Local aliases for frequently accessed namespace values
 local Colors = iNIF.Colors
 local activeRolls = iNIF.activeRolls
@@ -347,6 +364,8 @@ end
 -- Track that a player participated in a roll
 function iNIF.TrackRollParticipation(playerName, rollID, rollType)
     if not iNIFDB.rollTracker then return end
+    -- Defensive cleaning: strip [Loot]: prefix and WoW markup
+    playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
 
     if not iNIF.rollTracker.players[playerName] then
         iNIF.rollTracker.players[playerName] = { wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
@@ -358,6 +377,8 @@ end
 -- Track that a player won a roll
 function iNIF.TrackRollWin(playerName, itemLink)
     if not iNIFDB.rollTracker then return end
+    -- Defensive cleaning: strip [Loot]: prefix and WoW markup
+    playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
 
     if not iNIF.rollTracker.players[playerName] then
         iNIF.rollTracker.players[playerName] = { wins = 0, rolls = 0, needWins = 0, greedWins = 0 }

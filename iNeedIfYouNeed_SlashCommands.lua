@@ -9,6 +9,7 @@
 
 local addonName, iNIF = ...
 local L = iNIF.L or {}  -- Load localization table with fallback
+local print = function(...) iNIF.PrintToChat(...) end
 
 -- Local aliases
 local Colors = iNIF.Colors

@@ -1,5 +1,19 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.1
+
+### Chat Output Routing (New)
+- Route addon messages to custom chat tabs (General always on)
+- Chat Output settings section in General tab
+
+### Roll Win Tracking Fix
+- Roll wins now only count when the looted item matches an active roll
+- Prevents false positives from unrelated loot events
+
+### Other
+- iCommunityChat promo tab added to settings panel
+- Loot message parsing improved for edge cases with color codes
+
 ## Version 0.4.0
 
 ### Enchanter Tab (New)

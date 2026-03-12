@@ -9,6 +9,7 @@
 
 local addonName, iNIF = ...
 local L = iNIF.L or {}
+local print = function(...) iNIF.PrintToChat(...) end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                      iNIF — Event Handling, Menu & Minimap                     │
@@ -277,10 +278,15 @@ local function OnEvent(self, event, ...)
                 iNIF.OnDisenchantResult(matLink, matCount)
             end
 
-            -- Roll win tracking: check if this matches a recently completed roll
+            -- Roll win tracking: only count if item matches an active roll
             if iNIFDB.rollTracker then
-                local myName = UnitName("player")
-                iNIF.TrackRollWin(myName, matLink)
+                for _, roll in pairs(activeRolls) do
+                    if roll.itemLink and matLink and (matLink:find(roll.itemLink, 1, true) or roll.itemLink:find(matLink, 1, true)) then
+                        local myName = UnitName("player")
+                        iNIF.TrackRollWin(myName, matLink)
+                        break
+                    end
+                end
             end
         end
 
@@ -290,9 +296,15 @@ local function OnEvent(self, event, ...)
             otherPlayer, otherLootLink = cleanMessage:match("^(.-)%s+receives loot:%s*(.+)$")
         end
         if otherPlayer and otherLootLink then
-            otherPlayer = otherPlayer:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+            otherPlayer = otherPlayer:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+            -- Only count if item matches an active roll
             if iNIFDB.rollTracker then
-                iNIF.TrackRollWin(otherPlayer, otherLootLink)
+                for _, roll in pairs(activeRolls) do
+                    if roll.itemLink and otherLootLink and (otherLootLink:find(roll.itemLink, 1, true) or roll.itemLink:find(otherLootLink, 1, true)) then
+                        iNIF.TrackRollWin(otherPlayer, otherLootLink)
+                        break
+                    end
+                end
             end
         end
 
