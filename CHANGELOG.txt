@@ -1,5 +1,14 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.2
+
+### Fixes
+- Minimap icon position no longer resets on reload (deferred LDBIcon registration)
+- About tab game version now uses dynamic detection instead of hardcoded value
+
+### Changed
+- TBC version detection boundary updated (20500 split)
+
 ## Version 0.4.1
 
 ### Chat Output Routing (New)

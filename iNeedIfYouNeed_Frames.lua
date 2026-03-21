@@ -37,6 +37,14 @@ local function OnEvent(self, event, ...)
             -- Backfill new saved variable defaults for upgrading users
             iNIF.ApplyDynamicDefaults()
 
+            -- Register minimap icon with saved position (must happen after SavedVars load)
+            if LDBIcon and iNIF.MinimapDataObject then
+                if not iNIFDB.minimapButton then
+                    iNIFDB.minimapButton = { hide = false, minimapPos = -30 }
+                end
+                LDBIcon:Register("iNeedIfYouNeed", iNIF.MinimapDataObject, iNIFDB.minimapButton)
+            end
+
             -- Initialize AceComm
             if AceComm then
                 AceComm:Embed(iNIF)
@@ -50,7 +58,8 @@ local function OnEvent(self, event, ...)
 
             -- Delayed startup message (like iWR) - always shows, no severity prefix
             C_Timer.After(2, function()
-                print(L["DebugPrefix"] .. string.format(L["StartupMessage"], Title, Colors.Green .. "v" .. Version .. Colors.iNIF))
+                local gameName = iNIF.GameVersionName or "Unknown Version"
+                print(L["DebugPrefix"] .. string.format(L["StartupMessage"], Title, gameName, Colors.Green .. "v" .. Version .. Colors.iNIF))
 
                 -- Welcome message (once per version)
                 if iNIFDB.WelcomeMessage ~= Version then
@@ -977,9 +986,10 @@ end
 -- │                              Minimap Icon                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
--- Create minimap button (following iWR pattern)
+-- Create minimap button data object (following iWR pattern)
+-- NOTE: LDBIcon:Register is deferred to ADDON_LOADED so saved minimap position is used
 if LDBroker and LDBIcon then
-    local minimapButton = LDBroker:NewDataObject("iNeedIfYouNeed", {
+    iNIF.MinimapDataObject = LDBroker:NewDataObject("iNeedIfYouNeed", {
         type = "data source",
         text = "iNIF",
         icon = "Interface\\AddOns\\iNeedIfYouNeed\\images\\Logo_iNIF",
@@ -1040,5 +1050,5 @@ if LDBroker and LDBIcon then
         end,
     })
 
-    LDBIcon:Register("iNeedIfYouNeed", minimapButton, iNIFDB.minimapButton)
+    -- Registration deferred to ADDON_LOADED (see OnEvent handler)
 end

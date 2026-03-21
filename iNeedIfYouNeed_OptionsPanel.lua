@@ -829,7 +829,7 @@ function iNIF.CreateOptionsPanel()
 
     local aboutGameVer = aboutContent:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     aboutGameVer:SetPoint("TOP", aboutContent, "TOP", 0, y)
-    aboutGameVer:SetText(L["AboutGameVersion"])
+    aboutGameVer:SetText(iNIF.GameVersionName or L["AboutGameVersion"])
     y = y - 30
 
     local aboutInfo

@@ -25,6 +25,30 @@ iNIF.Version = C_AddOns.GetAddOnMetadata(addonName, "Version")
 iNIF.Author = C_AddOns.GetAddOnMetadata(addonName, "Author")
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                              Game Version Detection                            │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+
+iNIF.GameVersion, iNIF.GameBuild, iNIF.GameBuildDate, iNIF.GameTocVersion = GetBuildInfo()
+local gameTocNumber = tonumber(iNIF.GameTocVersion) or 0
+if gameTocNumber >= 120000 then
+    iNIF.GameVersionName = "Retail WoW"
+elseif gameTocNumber > 50000 and gameTocNumber < 59999 then
+    iNIF.GameVersionName = "Classic MoP"
+elseif gameTocNumber > 40000 and gameTocNumber < 49999 then
+    iNIF.GameVersionName = "Classic Cata"
+elseif gameTocNumber > 30000 and gameTocNumber < 39999 then
+    iNIF.GameVersionName = "Classic WotLK"
+elseif gameTocNumber >= 20500 and gameTocNumber < 30000 then
+    iNIF.GameVersionName = "Anniversary TBC"
+elseif gameTocNumber >= 20000 and gameTocNumber < 20500 then
+    iNIF.GameVersionName = "Classic TBC"
+elseif gameTocNumber > 10000 and gameTocNumber < 19999 then
+    iNIF.GameVersionName = "Classic Era"
+else
+    iNIF.GameVersionName = "Unknown Version"
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                              Saved Variables                                   │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 if not iNIFDB then

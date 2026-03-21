@@ -147,7 +147,7 @@ L["SlashEnchanterMode"] = "Enchanter Mode: "
 -- │                         Settings Panel - About Tab                             │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["AboutCreatedBy"] = "Created by: "
-L["AboutGameVersion"] = "Classic TBC"
+L["AboutGameVersion"] = "Anniversary TBC"
 L["AboutDescription1"] = Colors.iNIF .. "iNeedIfYouNeed " .. Colors.Reset .. "is an addon designed to help you with smart looting."
 L["AboutDescription2"] = Colors.iNIF .. "iNIF " .. Colors.Reset .. "is in early development. Join the Discord for help with issues, questions, or suggestions."
 L["AboutDiscordDesc"] = Colors.Gray .. "Copy this link to join our Discord for support and updates" .. Colors.Reset
@@ -177,7 +177,7 @@ L["StubOpenSettingsButton"] = Colors.iNIF .. " Options"
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                               Startup Message                                  │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
-L["StartupMessage"] = "%s Classic TBC" .. Colors.Reset .. " %s Loaded."
+L["StartupMessage"] = "%s " .. Colors.iNIF .. "%s " .. Colors.Green .. "%s" .. Colors.iNIF .. " Loaded."
 L["WelcomeStart"] = Msg("Thank you ")
 L["WelcomeEnd"] = Colors.iNIF .. " for being part of the development of iNeedIfYouNeed, if you get into any issues please reach out on CurseForge in the comment section or Discord."
 
