@@ -1,5 +1,10 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.3
+
+### New
+- iSealTwist promo/settings tab in Other Addons sidebar
+
 ## Version 0.4.2
 
 ### Fixes

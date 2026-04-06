@@ -236,7 +236,8 @@ function iNIF.CreateOptionsPanel()
     local iSPContainer, iSPContent = CreateTabContent()
     local iCCContainer, iCCContent = CreateTabContent()
 
-    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer, iCCContainer}
+    local iSTContainer, iSTContent = CreateTabContent()
+    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer, iCCContainer, iSTContainer}
 
     local sidebarButtons = {}
     local activeIndex = 1
@@ -267,9 +268,10 @@ function iNIF.CreateOptionsPanel()
         {type = "tab", label = L["Tab3Enchanter"] or "Enchanter", index = 3},
         {type = "tab", label = L["Tab4About"] or L["Tab2About"], index = 4},
         {type = "header", label = L["SidebarHeaderOtherAddons"]},
-        {type = "tab", label = L["Tab5iWR"] or L["Tab3iWR"], index = 5},
-        {type = "tab", label = L["Tab6iSP"] or L["Tab4iSP"], index = 6},
-        {type = "tab", label = L["Tab7iCCPromo"] or "iCommunityChat", index = 7},
+        {type = "tab", label = L["TabIWRPromo"], index = 5},
+        {type = "tab", label = L["TabISPPromo"], index = 6},
+        {type = "tab", label = L["TabICCPromo"], index = 7},
+        {type = "tab", label = L["TabISTPromo"], index = 8},
     }
 
     local sidebarY = -6
@@ -1058,6 +1060,47 @@ function iNIF.CreateOptionsPanel()
         y, "GameFontDisableSmall")
 
     -- ╭────────────────────────────────────────────────────────────────────────────╮
+    -- │                      iST Settings Tab                                     │
+    -- ╰────────────────────────────────────────────────────────────────────────────╯
+    local iSTInstalledFrame = CreateFrame("Frame", nil, iSTContent)
+    iSTInstalledFrame:SetAllPoints(iSTContent)
+    iSTInstalledFrame:Hide()
+    do
+        y = -10
+        _, y = CreateSectionHeader(iSTInstalledFrame, L["ISTSettingsHeader"], y)
+        local iSTDesc
+        iSTDesc, y = CreateInfoText(iSTInstalledFrame, L["ISTInstalledDesc"], y, "GameFontHighlight")
+        y = y - 10
+        local iSTButton = CreateFrame("Button", nil, iSTInstalledFrame, "UIPanelButtonTemplate")
+        iSTButton:SetSize(180, 28)
+        iSTButton:SetPoint("TOPLEFT", iSTInstalledFrame, "TOPLEFT", 25, y)
+        iSTButton:SetText(L["ISTOpenSettingsButton"])
+        iSTButton:SetScript("OnClick", function()
+            local iSTFrame = _G["iSTSettingsFrame"]
+            if iSTFrame then
+                local point, _, relPoint, xOfs, yOfs = settingsFrame:GetPoint()
+                iSTFrame:ClearAllPoints()
+                iSTFrame:SetPoint(point, UIParent, relPoint, xOfs, yOfs)
+                iSTFrame:Show()
+                settingsFrame:Hide()
+            end
+        end)
+    end
+
+    local iSTPromoFrame = CreateFrame("Frame", nil, iSTContent)
+    iSTPromoFrame:SetAllPoints(iSTContent)
+    iSTPromoFrame:Hide()
+    do
+        y = -10
+        _, y = CreateSectionHeader(iSTPromoFrame, L["ISTPromoHeader"], y)
+        local iSTPromo
+        iSTPromo, y = CreateInfoText(iSTPromoFrame, L["ISTPromoDesc"], y, "GameFontHighlight")
+        y = y - 4
+        local iSTPromoLink
+        iSTPromoLink, y = CreateInfoText(iSTPromoFrame, L["ISTPromoLink"], y, "GameFontDisableSmall")
+    end
+
+    -- ╭────────────────────────────────────────────────────────────────────────────╮
     -- │                     Blizzard Interface Options Stub                        │
     -- ╰────────────────────────────────────────────────────────────────────────────╯
     local stubPanel = CreateFrame("Frame", "iNIFOptionsPanel", UIParent)
@@ -1099,6 +1142,9 @@ function iNIF.CreateOptionsPanel()
         local iCCFrame = _G.iCC and _G.iCC.SettingsFrame
         if iCCFrame and iCCFrame:IsShown() then iCCFrame:Hide() end
 
+        local iSTFrame = _G["iSTSettingsFrame"]
+        if iSTFrame and iSTFrame:IsShown() then iSTFrame:Hide() end
+
         -- Refresh checkboxes
         for key, cb in pairs(checkboxRefs) do
             if iNIFDB[key] ~= nil then
@@ -1113,7 +1159,7 @@ function iNIF.CreateOptionsPanel()
 
         -- Update iWR sidebar button text
         if sidebarButtons[5] then
-            sidebarButtons[5].text:SetText(iWRLoaded and (L["Tab5iWR"] or L["Tab3iWR"]) or L["Tab3iWRPromo"])
+            sidebarButtons[5].text:SetText(iWRLoaded and L["TabIWR"] or L["TabIWRPromo"])
         end
 
         local iSPLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iSoundPlayer")
@@ -1122,7 +1168,7 @@ function iNIF.CreateOptionsPanel()
 
         -- Update iSP sidebar button text
         if sidebarButtons[6] then
-            sidebarButtons[6].text:SetText(iSPLoaded and (L["Tab6iSP"] or L["Tab4iSP"]) or L["Tab4iSPPromo"])
+            sidebarButtons[6].text:SetText(iSPLoaded and L["TabISP"] or L["TabISPPromo"])
         end
 
         local iCCLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iCommunityChat")
@@ -1131,7 +1177,14 @@ function iNIF.CreateOptionsPanel()
 
         -- Update iCC sidebar button text
         if sidebarButtons[7] then
-            sidebarButtons[7].text:SetText(iCCLoaded and L["Tab7iCC"] or (L["Tab7iCCPromo"] or "iCommunityChat"))
+            sidebarButtons[7].text:SetText(iCCLoaded and L["TabICC"] or L["TabICCPromo"])
+        end
+
+        local iSTLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iSealTwist")
+        iSTInstalledFrame:SetShown(iSTLoaded)
+        iSTPromoFrame:SetShown(not iSTLoaded)
+        if sidebarButtons[8] then
+            sidebarButtons[8].text:SetText(iSTLoaded and L["TabIST"] or L["TabISTPromo"])
         end
 
         -- Refresh disenchant history when settings open

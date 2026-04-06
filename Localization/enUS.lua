@@ -241,6 +241,24 @@ L["ErroriCCNotFound"] = "iCC addon not found or settings not initialized!"
 L["ICCPromoDesc"] = Colors.iNIF .. "iCommunityChat" .. Colors.Reset .. " is a cross-guild community addon. Create and manage custom communities with shared chat, roster, and ranks — beyond guild boundaries.\n\n" .. Colors.Reset .. "Your community, your chat."
 L["ICCPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/icommunitychat"
 
+-- iST Promo
+L["TabIST"] = "iST Settings"
+L["TabISTPromo"] = "iSealTwist"
+L["ISTSettingsHeader"] = Colors.iNIF .. "iSealTwist"
+L["ISTInstalledDesc"] = Colors.iNIF .. "iSealTwist" .. Colors.Reset .. " is installed. Open its settings to configure the swing timer and twist window."
+L["ISTOpenSettingsButton"] = "Open iST Settings"
+L["ISTPromoHeader"] = Colors.iNIF .. "iSealTwist"
+L["ISTPromoDesc"] = Colors.iNIF .. "iSealTwist" .. Colors.Reset .. " is a seal twist timing helper for TBC Paladins. Visual swing timer with latency-compensated twist window indicator. Time your seals perfectly."
+L["ISTPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/isealtwist"
+
+-- Standardized tab labels (matching other addon patterns)
+L["TabIWR"] = "iWR Settings"
+L["TabIWRPromo"] = "iWillRemember"
+L["TabISP"] = "iSP Settings"
+L["TabISPPromo"] = "iSoundPlayer"
+L["TabICC"] = "iCC Settings"
+L["TabICCPromo"] = "iCommunityChat"
+
 -- iCC Settings (when installed)
 L["ICCInstalledDesc"] = Colors.iNIF .. "iCommunityChat" .. Colors.Reset .. " is installed! You can access iCC settings from here.\n\n" .. Colors.Gray .. "Note: These settings are managed by iCC and will affect the iCC addon." .. Colors.Reset
 L["ICCOpenSettingsButton"] = "Open iCC Settings"
