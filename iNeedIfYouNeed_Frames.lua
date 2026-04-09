@@ -172,7 +172,10 @@ local function OnEvent(self, event, ...)
             enchanterNeedSent = false, -- Track if Enchanter Mode already Needed this item
             ourDecisionTime = nil,     -- Time when WE clicked Greed+checkbox
             eligibleCount = eligibleCount,  -- How many players can actually roll (connected + visible)
-            quickLootAutoToggle = qlAutoToggle  -- QuickLoot Auto Toggle: pre-check checkbox
+            quickLootAutoToggle = qlAutoToggle,  -- QuickLoot Auto Toggle: pre-check checkbox
+            needCount = 0,   -- Running tally of Need presses
+            greedCount = 0,  -- Running tally of Greed presses
+            passCount = 0,   -- Running tally of Pass presses
         }
 
         Debug("Started timer for rollID: " .. rollID .. ", stored itemLink: " .. tostring(activeRolls[rollID].itemLink) .. ", duration: 60s")
@@ -201,6 +204,10 @@ local function OnEvent(self, event, ...)
                             if frame.iNIF_Checkbox.UpdateMode then
                                 frame.iNIF_Checkbox.UpdateMode()
                             end
+                            -- Reset roll count labels for the new roll
+                            if frame.iNIF_NeedCount then frame.iNIF_NeedCount:SetText("0") end
+                            if frame.iNIF_GreedCount then frame.iNIF_GreedCount:SetText("0") end
+                            if frame.iNIF_PassCount then frame.iNIF_PassCount:SetText("0") end
                         else
                             iNIF.EnhanceRollFrame(frame, rollID)
                         end

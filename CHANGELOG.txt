@@ -1,5 +1,17 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.5
+
+### New
+- Roll count display: Need/Greed/Pass counters on the loot roll frame
+  - Numbers shown at the bottom-right of each button icon (Need/Greed/Pass)
+  - Red for Need, green for Greed, gray for Pass
+  - Bold with thick outline, rendered in front of button textures
+  - Counts all players including yourself, capped display at 39+
+  - Each open roll frame tracks independently (up to 4 simultaneous rolls)
+  - Resets automatically when the frame is reused for a new item
+- Settings toggle: "Show Need/Greed/Pass counters on loot roll frame" (enabled by default)
+
 ## Version 0.4.3
 
 ### New

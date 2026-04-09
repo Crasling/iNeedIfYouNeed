@@ -746,6 +746,45 @@ CheckEnchanterMode = function(rollID)
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                          Roll Count Label Update                               │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+-- Format a roll count for display: shows 0-39, then "39+" for anything higher
+local function FormatRollCount(n)
+    n = n or 0
+    if n > 39 then return "39+" end
+    return tostring(n)
+end
+
+function iNIF.UpdateRollCounters(rollID)
+    if not iNIFDB.showRollCounts then return end
+    local roll = activeRolls[rollID]
+    if not roll then return end
+
+    -- Try stored frame reference first (works for both real and test frames)
+    local frame = roll.frame
+    if frame and (not frame:IsShown() or frame.rollID ~= rollID) then
+        frame = nil
+    end
+
+    -- Fall back to scanning Blizzard GroupLootFrames
+    if not frame then
+        for i = 1, 4 do
+            local f = _G["GroupLootFrame" .. i] or _G["LootRollFrame" .. i]
+            if f and f:IsShown() and f.rollID == rollID then
+                frame = f
+                break
+            end
+        end
+    end
+
+    if frame then
+        if frame.iNIF_NeedCount  then frame.iNIF_NeedCount:SetText(FormatRollCount(roll.needCount))  end
+        if frame.iNIF_GreedCount then frame.iNIF_GreedCount:SetText(FormatRollCount(roll.greedCount)) end
+        if frame.iNIF_PassCount  then frame.iNIF_PassCount:SetText(FormatRollCount(roll.passCount))  end
+    end
+end
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                        Loot Roll Frame Enhancement                             │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 function iNIF.EnhanceRollFrame(frame, rollID)
@@ -779,6 +818,34 @@ function iNIF.EnhanceRollFrame(frame, rollID)
     enchanterLabel:SetShadowColor(0, 0, 0, 1)
     enchanterLabel:SetShown(iNIFDB.enchanterMode)
     frame.iNIF_EnchanterLabel = enchanterLabel
+
+    -- Roll count labels (Need / Greed / Pass counters)
+    -- Positioned bottom-right of the button icon, matching default WoW roll count style
+    if iNIFDB.showRollCounts ~= false then
+        local needBtn  = frame.NeedButton  or frame.needButton
+        local greedBtn = frame.GreedButton or frame.greedButton
+        local passBtn  = frame.PassButton  or frame.passButton
+
+        local function MakeCountLabel(anchorBtn, r, g, b)
+            local anchor = anchorBtn.icon or anchorBtn.Icon or anchorBtn
+            -- Create on the button itself, not the parent frame — children always
+            -- render on top of their parent, so attaching to the button ensures
+            -- the number draws above all of the button's own textures.
+            local lbl = anchorBtn:CreateFontString(nil, "OVERLAY", "NumberFontNormal", 7)
+            lbl:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 0, 1)
+            lbl:SetText("0")
+            lbl:SetTextColor(r, g, b, 1)
+            local fontPath, fontSize = lbl:GetFont()
+            lbl:SetFont(fontPath, (fontSize or 10) + 2, "THICKOUTLINE")
+            lbl:SetShadowOffset(1, -1)
+            lbl:SetShadowColor(0, 0, 0, 1)
+            return lbl
+        end
+
+        if needBtn  then frame.iNIF_NeedCount  = MakeCountLabel(needBtn,  1,    0.2,  0.2)  end
+        if greedBtn then frame.iNIF_GreedCount = MakeCountLabel(greedBtn, 0.2,  0.9,  0.2)  end
+        if passBtn  then frame.iNIF_PassCount  = MakeCountLabel(passBtn,  0.65, 0.65, 0.65) end
+    end
 
     -- Store original Greed button click handler
     local greedButton = frame.GreedButton or frame.greedButton
@@ -830,7 +897,10 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                         iNIFGreeds = {},
                         iNIFCommSent = false,
                         enchanterNeedSent = false,
-                        ourDecisionTime = nil  -- Time when WE clicked Greed+checkbox
+                        ourDecisionTime = nil,  -- Time when WE clicked Greed+checkbox
+                        needCount = 0,
+                        greedCount = 0,
+                        passCount = 0,
                     }
                     roll = activeRolls[currentRollID]
                     Debug("Created roll object, checking if it exists: " .. tostring(roll ~= nil) .. ", rollID=" .. currentRollID)
@@ -943,6 +1013,10 @@ function iNIF.OnNeedDetected(playerName, itemLink)
             if itemLink and rollItemLink and (itemLink == rollItemLink or itemLink:find(rollItemLink, 1, true) or rollItemLink:find(itemLink, 1, true)) then
                 Debug("Matched Need to rollID: " .. rollID)
 
+                -- Increment Need counter (count all players including self)
+                roll.needCount = (roll.needCount or 0) + 1
+                iNIF.UpdateRollCounters(rollID)
+
                 -- Check if it's not us
                 local myName = UnitName("player")
                 if playerName ~= myName then
@@ -1022,6 +1096,10 @@ function iNIF.OnGreedDetected(playerName, itemLink)
 
             -- Match by item link
             if itemLink and rollItemLink and (itemLink == rollItemLink or itemLink:find(rollItemLink, 1, true) or rollItemLink:find(itemLink, 1, true)) then
+                -- Increment Greed counter (count all players including self)
+                roll.greedCount = (roll.greedCount or 0) + 1
+                iNIF.UpdateRollCounters(rollID)
+
                 -- Track this greed (ignore our own) - track ALL greeds, not just when monitoring
                 if playerName ~= myName then
                     roll.greedRolls[playerName] = true
@@ -1058,6 +1136,10 @@ function iNIF.OnPassDetected(playerName, itemLink)
             -- Match by item link or by checking if itemLink contains the roll item
             if itemLink and rollItemLink and (itemLink == rollItemLink or itemLink:find(rollItemLink, 1, true) or rollItemLink:find(itemLink, 1, true)) then
                 Debug("Matched Pass to rollID: " .. rollID)
+
+                -- Increment Pass counter (count all players including self)
+                roll.passCount = (roll.passCount or 0) + 1
+                iNIF.UpdateRollCounters(rollID)
 
                 -- Check if it's not us
                 local myName = UnitName("player")

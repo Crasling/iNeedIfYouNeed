@@ -67,6 +67,7 @@ if not iNIFDB then
         ninjaDetection = true, -- Enable ninja detection (flag wrong armor type needs)
         ninjaAnnounce = false, -- Announce ninja to party/raid (off by default)
         rollTracker = true, -- Enable roll fairness tracking
+        showRollCounts = true, -- Show Need/Greed/Pass counters on the roll frame
         ChatFrames = {}, -- Chat Output Routing
         minimapButton = {
             hide = false,
@@ -89,6 +90,7 @@ function iNIF.ApplyDynamicDefaults()
     if iNIFDB.ninjaDetection == nil then iNIFDB.ninjaDetection = true end
     if iNIFDB.ninjaAnnounce == nil then iNIFDB.ninjaAnnounce = false end
     if iNIFDB.rollTracker == nil then iNIFDB.rollTracker = true end
+    if iNIFDB.showRollCounts == nil then iNIFDB.showRollCounts = true end
     -- Per-character saved variables
     if not iNIFCharDB then iNIFCharDB = {} end
     if not iNIFCharDB.quickLoot then iNIFCharDB.quickLoot = {} end
@@ -173,6 +175,7 @@ iNIF.CheckboxRegistry = {
     ninjaDetection = {},
     ninjaAnnounce = {},
     rollTracker = {},
+    showRollCounts = {},
     debug = {}
 }
 

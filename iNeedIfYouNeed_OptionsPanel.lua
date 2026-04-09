@@ -372,6 +372,17 @@ function iNIF.CreateOptionsPanel()
         L["SettingsRollTrackerDesc"] or "", y, "rollTracker")
     checkboxRefs.rollTracker = cbRollTracker
 
+    -- ── Roll Count Display ──
+    y = y - 10
+    _, y = CreateSectionHeader(generalContent, L["SettingsSectionRollCounts"] or "Roll Count Display", y)
+
+    local cbShowRollCounts
+    cbShowRollCounts, y = CreateSettingsCheckbox(generalContent,
+        L["SettingsShowRollCounts"] or "Show Need/Greed/Pass counters on loot roll frame",
+        L["SettingsShowRollCountsDesc"] or "Displays small counters above each button showing how many players have pressed Need, Greed or Pass.",
+        y, "showRollCounts")
+    checkboxRefs.showRollCounts = cbShowRollCounts
+
     -- Show Luck Meter button
     local btnLuck = CreateFrame("Button", nil, generalContent, "UIPanelButtonTemplate")
     btnLuck:SetSize(150, 22)

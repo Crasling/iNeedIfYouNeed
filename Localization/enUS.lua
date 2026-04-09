@@ -394,6 +394,13 @@ L["RollTrackerWins"] = "Wins"
 L["RollTrackerRolls"] = "Rolls"
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
+-- │                        Settings Panel - Roll Count Display                    │
+-- ╰────────────────────────────────────────────────────────────────────────────────╯
+L["SettingsSectionRollCounts"] = Colors.iNIF .. "Roll Count Display"
+L["SettingsShowRollCounts"] = "Show Need/Greed/Pass counters on loot roll frame"
+L["SettingsShowRollCountsDesc"] = Colors.Gray .. "Displays small counters above each button showing how many players have pressed Need, Greed or Pass." .. Colors.Reset
+
+-- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                                Chat Output                                    │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 L["SectionChatOutput"] = "Chat Output"
