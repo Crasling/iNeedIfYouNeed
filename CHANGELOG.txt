@@ -1,5 +1,10 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.6
+
+### Fixes
+- Toggling off roll count display now immediately hides existing labels instead of leaving them stuck at 0
+
 ## Version 0.4.5
 
 ### New

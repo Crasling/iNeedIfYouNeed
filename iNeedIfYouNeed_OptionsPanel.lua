@@ -382,6 +382,12 @@ function iNIF.CreateOptionsPanel()
         L["SettingsShowRollCountsDesc"] or "Displays small counters above each button showing how many players have pressed Need, Greed or Pass.",
         y, "showRollCounts")
     checkboxRefs.showRollCounts = cbShowRollCounts
+    -- Immediately show/hide existing labels when the setting is toggled
+    local baseOnClick = cbShowRollCounts:GetScript("OnClick")
+    cbShowRollCounts:SetScript("OnClick", function(self)
+        if baseOnClick then baseOnClick(self) end
+        iNIF.RefreshRollCountLabels()
+    end)
 
     -- Show Luck Meter button
     local btnLuck = CreateFrame("Button", nil, generalContent, "UIPanelButtonTemplate")

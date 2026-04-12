@@ -755,6 +755,20 @@ local function FormatRollCount(n)
     return tostring(n)
 end
 
+-- Show or hide all count labels on currently visible roll frames.
+-- Called when the showRollCounts setting is toggled.
+function iNIF.RefreshRollCountLabels()
+    local visible = iNIFDB.showRollCounts and true or false
+    for i = 1, 4 do
+        local frame = _G["GroupLootFrame" .. i] or _G["LootRollFrame" .. i]
+        if frame then
+            if frame.iNIF_NeedCount  then frame.iNIF_NeedCount:SetShown(visible)  end
+            if frame.iNIF_GreedCount then frame.iNIF_GreedCount:SetShown(visible) end
+            if frame.iNIF_PassCount  then frame.iNIF_PassCount:SetShown(visible)  end
+        end
+    end
+end
+
 function iNIF.UpdateRollCounters(rollID)
     if not iNIFDB.showRollCounts then return end
     local roll = activeRolls[rollID]
