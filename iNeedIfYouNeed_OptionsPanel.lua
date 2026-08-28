@@ -234,10 +234,8 @@ function iNIF.CreateOptionsPanel()
     local aboutContainer, aboutContent = CreateTabContent()
     local iWRContainer, iWRContent = CreateTabContent()
     local iSPContainer, iSPContent = CreateTabContent()
-    local iCCContainer, iCCContent = CreateTabContent()
-
     local iSTContainer, iSTContent = CreateTabContent()
-    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer, iCCContainer, iSTContainer}
+    local tabContents = {generalContainer, quickLootContainer, enchanterContainer, aboutContainer, iWRContainer, iSPContainer, iSTContainer}
 
     local sidebarButtons = {}
     local activeIndex = 1
@@ -270,8 +268,7 @@ function iNIF.CreateOptionsPanel()
         {type = "header", label = L["SidebarHeaderOtherAddons"]},
         {type = "tab", label = L["TabIWRPromo"], index = 5},
         {type = "tab", label = L["TabISPPromo"], index = 6},
-        {type = "tab", label = L["TabICCPromo"], index = 7},
-        {type = "tab", label = L["TabISTPromo"], index = 8},
+        {type = "tab", label = L["TabISTPromo"], index = 7},
     }
 
     local sidebarY = -6
@@ -1020,63 +1017,6 @@ function iNIF.CreateOptionsPanel()
         y, "GameFontDisableSmall")
 
     -- ╭────────────────────────────────────────────────────────────────────────────╮
-    -- │                          iCC Settings Tab                                 │
-    -- │              (both variants built, toggled OnShow)                         │
-    -- ╰────────────────────────────────────────────────────────────────────────────╯
-
-    -- Create INSTALLED variant frame
-    local iCCInstalledFrame = CreateFrame("Frame", nil, iCCContent)
-    iCCInstalledFrame:SetAllPoints(iCCContent)
-    iCCInstalledFrame:Hide()
-
-    y = -10
-    _, y = CreateSectionHeader(iCCInstalledFrame, Colors.iNIF .. "iCommunityChat Settings", y)
-
-    local iCCDesc
-    iCCDesc, y = CreateInfoText(iCCInstalledFrame,
-        L["ICCInstalledDesc"],
-        y, "GameFontHighlight")
-
-    y = y - 10
-
-    local iCCOpenBtn = CreateFrame("Button", nil, iCCInstalledFrame, "UIPanelButtonTemplate")
-    iCCOpenBtn:SetSize(180, 28)
-    iCCOpenBtn:SetPoint("TOPLEFT", iCCInstalledFrame, "TOPLEFT", 25, y)
-    iCCOpenBtn:SetText(L["ICCOpenSettingsButton"])
-    iCCOpenBtn:SetScript("OnClick", function()
-        local iCCFrame = _G.iCC and _G.iCC.SettingsFrame
-        if iCCFrame then
-            local point, _, relPoint, xOfs, yOfs = settingsFrame:GetPoint()
-            iCCFrame:ClearAllPoints()
-            iCCFrame:SetPoint(point, UIParent, relPoint, xOfs, yOfs)
-            settingsFrame:Hide()
-            iCCFrame:Show()
-        else
-            Print(Colors.Red .. L["ErroriCCNotFound"])
-        end
-    end)
-
-    -- Create PROMO variant frame (always created, hidden initially)
-    local iCCPromoFrame = CreateFrame("Frame", nil, iCCContent)
-    iCCPromoFrame:SetAllPoints(iCCContent)
-    iCCPromoFrame:Hide()
-
-    y = -10
-    _, y = CreateSectionHeader(iCCPromoFrame, Colors.iNIF .. "iCommunityChat", y)
-
-    local iCCPromo
-    iCCPromo, y = CreateInfoText(iCCPromoFrame,
-        L["ICCPromoDesc"],
-        y, "GameFontHighlight")
-
-    y = y - 4
-
-    local iCCPromoLink
-    iCCPromoLink, y = CreateInfoText(iCCPromoFrame,
-        L["ICCPromoLink"],
-        y, "GameFontDisableSmall")
-
-    -- ╭────────────────────────────────────────────────────────────────────────────╮
     -- │                      iST Settings Tab                                     │
     -- ╰────────────────────────────────────────────────────────────────────────────╯
     local iSTInstalledFrame = CreateFrame("Frame", nil, iSTContent)
@@ -1156,9 +1096,6 @@ function iNIF.CreateOptionsPanel()
         local iWRFrame = _G.iWR and _G.iWR.SettingsFrame
         if iWRFrame and iWRFrame:IsShown() then iWRFrame:Hide() end
 
-        local iCCFrame = _G.iCC and _G.iCC.SettingsFrame
-        if iCCFrame and iCCFrame:IsShown() then iCCFrame:Hide() end
-
         local iSTFrame = _G["iSTSettingsFrame"]
         if iSTFrame and iSTFrame:IsShown() then iSTFrame:Hide() end
 
@@ -1188,20 +1125,11 @@ function iNIF.CreateOptionsPanel()
             sidebarButtons[6].text:SetText(iSPLoaded and L["TabISP"] or L["TabISPPromo"])
         end
 
-        local iCCLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iCommunityChat")
-        iCCInstalledFrame:SetShown(iCCLoaded)
-        iCCPromoFrame:SetShown(not iCCLoaded)
-
-        -- Update iCC sidebar button text
-        if sidebarButtons[7] then
-            sidebarButtons[7].text:SetText(iCCLoaded and L["TabICC"] or L["TabICCPromo"])
-        end
-
         local iSTLoaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("iSealTwist")
         iSTInstalledFrame:SetShown(iSTLoaded)
         iSTPromoFrame:SetShown(not iSTLoaded)
-        if sidebarButtons[8] then
-            sidebarButtons[8].text:SetText(iSTLoaded and L["TabIST"] or L["TabISTPromo"])
+        if sidebarButtons[7] then
+            sidebarButtons[7].text:SetText(iSTLoaded and L["TabIST"] or L["TabISTPromo"])
         end
 
         -- Refresh disenchant history when settings open

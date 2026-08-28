@@ -226,19 +226,6 @@ L["ISPInstalledDesc1"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " ус
 L["ISPInstalledDesc2"] = Colors.Gray .. "Примечание: Эти настройки управляются iSP и повлияют на аддон iSP." .. Colors.Reset -- ИИ перевод
 L["ISPOpenSettingsButton"] = "Открыть настройки iSP" -- ИИ перевод
 
--- iCC tab
-L["Tab7iCC"] = "Настройки iCC" -- ИИ перевод
-L["Tab7iCCPromo"] = "iCommunityChat"
-L["ErroriCCNotFound"] = "Аддон iCC не найден или настройки не инициализированы!" -- ИИ перевод
-
--- iCC Promo (when NOT installed) -- ИИ перевод
-L["ICCPromoDesc"] = Colors.iNIF .. "iCommunityChat" .. Colors.Reset .. " — аддон для межгильдейских сообществ. Создавайте и управляйте сообществами с общим чатом, составом и рангами — за пределами гильдий.\n\n" .. Colors.Reset .. "Ваше сообщество, ваш чат." -- ИИ перевод
-L["ICCPromoLink"] = "Доступно в CurseForge App и на curseforge.com/wow/addons/icommunitychat" -- ИИ перевод
-
--- iCC Settings (when installed) -- ИИ перевод
-L["ICCInstalledDesc"] = Colors.iNIF .. "iCommunityChat" .. Colors.Reset .. " установлен! Вы можете открыть настройки iCC отсюда.\n\n" .. Colors.Gray .. "Примечание: Эти настройки управляются iCC и влияют на аддон iCC." .. Colors.Reset -- ИИ перевод
-L["ICCOpenSettingsButton"] = "Открыть настройки iCC" -- ИИ перевод
-
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                    Панель меню (ПКМ на миникарте)                              │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯

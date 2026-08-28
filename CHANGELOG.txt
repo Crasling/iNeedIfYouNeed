@@ -1,420 +1,446 @@
-# iNeedIfYouNeed - Changelog
+================================================================================
+ iNeedIfYouNeed - Changelog
+================================================================================
 
-## Version 0.4.7
+v0.4.7 - Release
+--------------------------------------------------------------------------------
 
-### Changed
-- Added Anniversary TBC client interface 20506 support
+ [CHANGED] Added Anniversary TBC client interface 20506 support
+ [CHANGED] Removed deprecated iCommunityChat from the Other Addons panel
 
-## Version 0.4.6
+v0.4.6 - Release
+--------------------------------------------------------------------------------
 
-### Fixes
-- Toggling off roll count display now immediately hides existing labels instead of leaving them stuck at 0
+ [FIX] Toggling off roll count display now immediately hides existing labels instead of leaving them stuck at 0
 
-## Version 0.4.5
+v0.4.5 - Release
+--------------------------------------------------------------------------------
 
-### New
-- Roll count display: Need/Greed/Pass counters on the loot roll frame
+ [NEW] Roll count display: Need/Greed/Pass counters on the loot roll frame
   - Numbers shown at the bottom-right of each button icon (Need/Greed/Pass)
   - Red for Need, green for Greed, gray for Pass
   - Bold with thick outline, rendered in front of button textures
   - Counts all players including yourself, capped display at 39+
   - Each open roll frame tracks independently (up to 4 simultaneous rolls)
   - Resets automatically when the frame is reused for a new item
-- Settings toggle: "Show Need/Greed/Pass counters on loot roll frame" (enabled by default)
+ [NEW] Settings toggle: "Show Need/Greed/Pass counters on loot roll frame" (enabled by default)
 
-## Version 0.4.3
+v0.4.3 - Release
+--------------------------------------------------------------------------------
 
-### New
-- iSealTwist promo/settings tab in Other Addons sidebar
+ [NEW] iSealTwist promo/settings tab in Other Addons sidebar
 
-## Version 0.4.2
+v0.4.2 - Release
+--------------------------------------------------------------------------------
 
-### Fixes
-- Minimap icon position no longer resets on reload (deferred LDBIcon registration)
-- About tab game version now uses dynamic detection instead of hardcoded value
+ [FIX] Minimap icon position no longer resets on reload (deferred LDBIcon registration)
+ [FIX] About tab game version now uses dynamic detection instead of hardcoded value
 
-### Changed
-- TBC version detection boundary updated (20500 split)
+ [CHANGED] TBC version detection boundary updated (20500 split)
 
-## Version 0.4.1
+v0.4.1 - Release
+--------------------------------------------------------------------------------
 
-### Chat Output Routing (New)
-- Route addon messages to custom chat tabs (General always on)
-- Chat Output settings section in General tab
+ [NEW] Chat Output Routing
+  - Route addon messages to custom chat tabs (General always on)
+  - Chat Output settings section in General tab
 
-### Roll Win Tracking Fix
-- Roll wins now only count when the looted item matches an active roll
-- Prevents false positives from unrelated loot events
+ [FIX] Roll Win Tracking
+  - Roll wins now only count when the looted item matches an active roll
+  - Prevents false positives from unrelated loot events
 
-### Other
-- iCommunityChat promo tab added to settings panel
-- Loot message parsing improved for edge cases with color codes
+ [CHANGED] Other
+  - iCommunityChat promo tab added to settings panel
+  - Loot message parsing improved for edge cases with color codes
 
-## Version 0.4.0
+v0.4.0 - Release
+--------------------------------------------------------------------------------
 
-### Enchanter Tab (New)
-- Enchanter Mode settings moved from General to a dedicated "Enchanter" sidebar tab
-- Disenchant detection via UNIT_SPELLCAST_SUCCEEDED (spellID 13262) + CHAT_MSG_LOOT
-- Announce disenchant results to party/raid chat
-- Session disenchant history (scrollable list, newest first, with Clear button)
-- Material Split Calculator: standalone draggable frame showing total mats and per-player split
-- New slash command: `/inif split` to toggle the split window
+ [NEW] Enchanter Tab
+  - Enchanter Mode settings moved from General to a dedicated "Enchanter" sidebar tab
+  - Disenchant detection via UNIT_SPELLCAST_SUCCEEDED (spellID 13262) + CHAT_MSG_LOOT
+  - Announce disenchant results to party/raid chat
+  - Session disenchant history (scrollable list, newest first, with Clear button)
+  - Material Split Calculator: standalone draggable frame showing total mats and per-player split
+  - New slash command: /inif split to toggle the split window
 
-### Ninja Detection (New)
-- Detects when a player rolls Need on armor they cannot equip (class-based proficiency check)
-- Uses GetItemInfo classID/subclassID for Cloth/Leather/Mail/Plate identification
-- Handles GetItemInfo cache misses with retry (up to 2 retries, 0.5s delay)
-- Local chat warning with player name, class, item link, and armor type
-- Optional party/raid announcement (off by default)
-- Session ninja incident tracking with `/inif ninja` to review
-- Settings in General tab: Enable Ninja Detection, Announce to party/raid
+ [NEW] Ninja Detection
+  - Detects when a player rolls Need on armor they cannot equip (class-based proficiency check)
+  - Uses GetItemInfo classID/subclassID for Cloth/Leather/Mail/Plate identification
+  - Handles GetItemInfo cache misses with retry (up to 2 retries, 0.5s delay)
+  - Local chat warning with player name, class, item link, and armor type
+  - Optional party/raid announcement (off by default)
+  - Session ninja incident tracking with /inif ninja to review
+  - Settings in General tab: Enable Ninja Detection, Announce to party/raid
 
-### Roll Fairness Tracker (New)
-- Tracks roll participation and wins per player across the session
-- Correlates "receives loot:" messages with recently completed rolls
-- Luck Meter: floating frame showing per-player win rate with colored bars
-- New slash command: `/inif luck` to toggle the Luck Meter
-- Settings in General tab: Enable Roll Tracker, Show Luck Meter button
+ [NEW] Roll Fairness Tracker
+  - Tracks roll participation and wins per player across the session
+  - Correlates "receives loot:" messages with recently completed rolls
+  - Luck Meter: floating frame showing per-player win rate with colored bars
+  - New slash command: /inif luck to toggle the Luck Meter
+  - Settings in General tab: Enable Roll Tracker, Show Luck Meter button
 
-### Settings Panel Restructure
-- Sidebar tabs reindexed: General (1), QuickLoot (2), Enchanter (3), About (4), iWR (5), iSP (6)
-- Ninja Detection and Roll Tracker sections added to General tab
-- Enchanter tab contains: mode toggle, DE announce settings, disenchant history, split window
+ [CHANGED] Settings Panel Restructure
+  - Sidebar tabs reindexed: General (1), QuickLoot (2), Enchanter (3), About (4), iWR (5), iSP (6)
+  - Ninja Detection and Roll Tracker sections added to General tab
+  - Enchanter tab contains: mode toggle, DE announce settings, disenchant history, split window
 
-### Localization
-- ~40 new English locale keys across all new features
-- Full Russian translations added (marked with ИИ перевод)
+ [CHANGED] Localization
+  - ~40 new English locale keys across all new features
+  - Full Russian translations added (marked with ИИ перевод)
 
- Alpha Build History
- ~~~~~~~~~~~~~~~~~~~
+ [CHANGED] Alpha Build History
   0.4.0.1  - Initial implementation of all v0.4.0 features
 
-## Version 0.3.4
+v0.3.4 - Release
+--------------------------------------------------------------------------------
 
-### File Split & Code Organization
-- Split monolithic iNeedIfYouNeed.lua (2,602 lines) into 5 focused files
-- iNeedIfYouNeed_Main.lua — namespace, libraries, saved vars, colors, core variables
-- iNeedIfYouNeed_RollLogic.lua — timer window, roll processing, AceComm, decision logic
-- iNeedIfYouNeed_OptionsPanel.lua — settings panel with all tabs
-- iNeedIfYouNeed_Frames.lua — event handler, menu panel, minimap icon
-- iNeedIfYouNeed_SlashCommands.lua — all /inif commands
-- Fixed #activeRolls hash table bug (always returned 0, now uses CountTable)
-- Fixed forward declaration pattern for cross-referenced functions
+ [CHANGED] File Split & Code Organization
+  - Split monolithic iNeedIfYouNeed.lua (2,602 lines) into 5 focused files
+  - iNeedIfYouNeed_Main.lua — namespace, libraries, saved vars, colors, core variables
+  - iNeedIfYouNeed_RollLogic.lua — timer window, roll processing, AceComm, decision logic
+  - iNeedIfYouNeed_OptionsPanel.lua — settings panel with all tabs
+  - iNeedIfYouNeed_Frames.lua — event handler, menu panel, minimap icon
+  - iNeedIfYouNeed_SlashCommands.lua — all /inif commands
+  - Fixed #activeRolls hash table bug (always returned 0, now uses CountTable)
+  - Fixed forward declaration pattern for cross-referenced functions
 
-### QuickLoot Auto Toggle (New Option)
-- New "Toggle" action for QuickLoot rules (alongside Need/Greed/Pass)
-- Auto-checks the iNIF checkbox instead of instantly rolling
-- Lets the monitoring system handle the roll while saving manual checkbox clicks
-- Orange "Toggle" button in QuickLoot settings tab
-- Cycling updated: Need → Greed → Pass → Toggle → Need
+ [NEW] QuickLoot Auto Toggle
+  - New "Toggle" action for QuickLoot rules (alongside Need/Greed/Pass)
+  - Auto-checks the iNIF checkbox instead of instantly rolling
+  - Lets the monitoring system handle the roll while saving manual checkbox clicks
+  - Orange "Toggle" button in QuickLoot settings tab
+  - Cycling updated: Need → Greed → Pass → Toggle → Need
 
-## Version 0.3.2.1
+v0.3.2.1 - Release
+--------------------------------------------------------------------------------
 
-### QuickLoot Tab (New Feature)
-- New "QuickLoot" settings tab for pre-registering item names with Need/Greed/Pass
-- Auto-rolls instantly when exact item name matches during a loot roll
-- EditBox input with Need, Greed, and Pass buttons
-- Scrollable list of rules with remove buttons and alternating row backgrounds
-- Rules persist across sessions via SavedVariables
-- Slash commands: /inif quickloot, /inif ql
+ [NEW] QuickLoot Tab
+  - New "QuickLoot" settings tab for pre-registering item names with Need/Greed/Pass
+  - Auto-rolls instantly when exact item name matches during a loot roll
+  - EditBox input with Need, Greed, and Pass buttons
+  - Scrollable list of rules with remove buttons and alternating row backgrounds
+  - Rules persist across sessions via SavedVariables
+  - Slash commands: /inif quickloot, /inif ql
 
-## Version 0.3.1.2
+v0.3.1.2 - Release
+--------------------------------------------------------------------------------
 
-### Enchanter Mode Safety & Fixes
-- Blocked toggling Enchanter Mode while a loot roll is active
-- Settings checkbox greys out and becomes disabled during active rolls
-- Slash commands /inif enchanter and /inif de blocked during active rolls
-- Fixed OnGreedDetected/OnPassDetected running CheckIfAllGreeded before CheckEnchanterMode (caused Greed instead of Need)
-- Removed item quality filter — player decides which items to use Enchanter Mode on
-- Added separate monitoring message for Enchanter Mode rolls
-- Added new locale key for active roll warning message
+ [FIX] Enchanter Mode Safety &
+  - Blocked toggling Enchanter Mode while a loot roll is active
+  - Settings checkbox greys out and becomes disabled during active rolls
+  - Slash commands /inif enchanter and /inif de blocked during active rolls
+  - Fixed OnGreedDetected/OnPassDetected running CheckIfAllGreeded before CheckEnchanterMode (caused Greed instead of Need)
+  - Removed item quality filter — player decides which items to use Enchanter Mode on
+  - Added separate monitoring message for Enchanter Mode rolls
+  - Added new locale key for active roll warning message
 
-## Version 0.3.1.1
+v0.3.1.1 - Release
+--------------------------------------------------------------------------------
 
-### Enchanter Mode (New Feature)
-- Added Enchanter Mode: automatically Need on items that nobody else needs (for disenchanting)
-- Waits until ALL party members have decided before rolling Need
-- Full transparency: announces to party/raid chat on every enchanter Need
-- AceComm support: prevents multiple iNIF enchanters from double-needing
-- Either/or with normal iNIF mode (checkbox still required per roll)
-- New settings panel section with toggle checkbox
-- New slash commands: /inif enchanter, /inif de
-- 7 new locale keys
+ [NEW] Enchanter Mode
+  - Added Enchanter Mode: automatically Need on items that nobody else needs (for disenchanting)
+  - Waits until ALL party members have decided before rolling Need
+  - Full transparency: announces to party/raid chat on every enchanter Need
+  - AceComm support: prevents multiple iNIF enchanters from double-needing
+  - Either/or with normal iNIF mode (checkbox still required per roll)
+  - New settings panel section with toggle checkbox
+  - New slash commands: /inif enchanter, /inif de
+  - 7 new locale keys
 
-## Version 0.3.1
+v0.3.1 - Release
+--------------------------------------------------------------------------------
 
-### Version bump
+ [CHANGED] Version bump
 
-## Version 0.2.7
+v0.2.7 - Release
+--------------------------------------------------------------------------------
 
-### Combat Protection
-- Added combat state tracking (PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED)
-- Settings panel and menu auto-hide when entering combat
-- Blocked opening settings/menu during combat with chat message
-- Added L["InCombat"] locale key
+ [FIX] Combat Protection
+  - Added combat state tracking (PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED)
+  - Settings panel and menu auto-hide when entering combat
+  - Blocked opening settings/menu during combat with chat message
+  - Added L["InCombat"] locale key
 
-## Version 0.2.6
+v0.2.6 - Release
+--------------------------------------------------------------------------------
 
-### Localization
-- Moved all hardcoded sidebar headers and Other Addons labels to locale tags
-- Added L["SidebarHeaderiNIF"], L["SidebarHeaderOtherAddons"], L["Tab3iWRPromo"], L["Tab4iSPPromo"]
+ [CHANGED] Localization
+  - Moved all hardcoded sidebar headers and Other Addons labels to locale tags
+  - Added L["SidebarHeaderiNIF"], L["SidebarHeaderOtherAddons"], L["Tab3iWRPromo"], L["Tab4iSPPromo"]
 
-## Version 0.2.5
+v0.2.5 - Release
+--------------------------------------------------------------------------------
 
-### Bug Fixes
-- **iWR Settings Button**: Fixed button not opening iWR settings (was looking for wrong frame name, now uses AceAddon global)
-- **iSP Settings Button**: Fixed button not opening iSP settings (was referencing local namespace, now uses named global frame)
-- **Sidebar Dynamic Text**: Added dynamic sidebar button text updates on show (shows "iWR Settings"/"iSP Settings" when installed, full addon name when not)
-- **Cross-Addon Close**: Opening iNIF settings now auto-closes iWR/iSP settings panels if open
+ [FIX] Bug
+  - iWR Settings Button: Fixed button not opening iWR settings (was looking for wrong frame name, now uses AceAddon global)
+  - iSP Settings Button: Fixed button not opening iSP settings (was referencing local namespace, now uses named global frame)
+  - Sidebar Dynamic Text: Added dynamic sidebar button text updates on show (shows "iWR Settings"/"iSP Settings" when installed, full addon name when not)
+  - Cross-Addon Close: Opening iNIF settings now auto-closes iWR/iSP settings panels if open
 
-## Version 0.2.3 (2025-02-11)
+v0.2.3 - Release
+--------------------------------------------------------------------------------
 
-### UI Improvements
-- **Settings Panel**: Added iWR-style section headers to sidebar navigation
+ [CHANGED] UI Improvements
+  - Settings Panel: Added iWR-style section headers to sidebar navigation
   - "iNeedIfYouNeed" header groups General and About tabs
   - "Other Addons" header ALWAYS visible (groups addon integration tabs)
   - iWR Settings tab ALWAYS visible with dynamic content
-  - **iSP Settings tab ALWAYS visible with dynamic content (NEW)**
-- **iWR Integration**:
+  - iSP Settings tab ALWAYS visible with dynamic content (NEW)
+  - iWR Integration:
   - When installed: Button to open iWR settings at same position, closes iNIF
   - When NOT installed: Shows promo text and CurseForge link
-- **iSP Integration (NEW)**:
+  - iSP Integration (NEW):
   - When installed: Button to open iSP settings at same position, closes iNIF
   - When NOT installed: Shows promo text about sound player features and CurseForge link
-- **Visual Consistency**: Matches iWillRemember addon's settings panel design
-- **Stub Panel**: Updated text to match iWR style ("Right-click", "Options")
+  - Visual Consistency: Matches iWillRemember addon's settings panel design
+  - Stub Panel: Updated text to match iWR style ("Right-click", "Options")
 
-### Technical Details
-- Sidebar now supports both "header" and "tab" item types
-- Dynamic addon detection using C_AddOns.IsAddOnLoaded (iWR, iSP)
-- Position synchronization between iNIF and other addon settings frames
-- Conditional content rendering based on installation status
-- All addon tabs always created (not conditional anymore)
-- Headers use iNIF orange color (#ff9716) with GameFontNormalSmall font
+ [CHANGED] Technical Details
+  - Sidebar now supports both "header" and "tab" item types
+  - Dynamic addon detection using C_AddOns.IsAddOnLoaded (iWR, iSP)
+  - Position synchronization between iNIF and other addon settings frames
+  - Conditional content rendering based on installation status
+  - All addon tabs always created (not conditional anymore)
+  - Headers use iNIF orange color (#ff9716) with GameFontNormalSmall font
 
-## Version 0.2.2 (2025-02-11)
+v0.2.2 - Release
+--------------------------------------------------------------------------------
 
-### Critical Bug Fixes
-- **MAJOR FIX**: CheckIfAllINIFGreeded no longer auto-rolls before all party members decide
+ [FIX] Critical Bug
+  - MAJOR FIX: CheckIfAllINIFGreeded no longer auto-rolls before all party members decide
   - Previously: Auto-rolled Greed after 2s grace period when iNIF users coordinated
   - Now: Grace period only skips 58s timer, still waits for ALL party members (iNIF + non-iNIF)
   - Prevents greeding before non-iNIF players have chance to Need
 
-- **MAJOR FIX**: CheckIfAllGreeded now counts iNIF Greed+checkbox decisions from AceComm
+  - MAJOR FIX: CheckIfAllGreeded now counts iNIF Greed+checkbox decisions from AceComm
   - Previously: Only counted decisions visible in CHAT_MSG_LOOT
   - Now: Counts both regular greeds (chat) AND iNIF greeds (AceComm) AND passes
   - Fixes scenario where iNIF users' checkbox decisions weren't counted toward "everyone decided"
 
-### Technical Details
-- Removed ProcessRoll() call from CheckIfAllINIFGreeded (line ~508)
-- Added iNIFGreedCount to CheckIfAllGreeded counting logic
-- Avoids double-counting players who appear in both iNIFGreeds and greedRolls
-- Debug messages now show: "greeds (chat), greeds (iNIF), passes = total/partySize"
+ [CHANGED] Technical Details
+  - Removed ProcessRoll() call from CheckIfAllINIFGreeded (line ~508)
+  - Added iNIFGreedCount to CheckIfAllGreeded counting logic
+  - Avoids double-counting players who appear in both iNIFGreeds and greedRolls
+  - Debug messages now show: "greeds (chat), greeds (iNIF), passes = total/partySize"
 
-### What This Means
-- iNIF coordination works correctly: skips 58s timer when multiple iNIF users in party
-- Still respects the core principle: "Wait for EVERYONE to decide before auto-rolling"
-- Non-iNIF party members are never ignored
+ [CHANGED] What This Means
+  - iNIF coordination works correctly: skips 58s timer when multiple iNIF users in party
+  - Still respects the core principle: "Wait for EVERYONE to decide before auto-rolling"
+  - Non-iNIF party members are never ignored
 
-## Version 0.2.1 (2025-02-11)
-- Release to Github stuff...
+v0.2.1 - Release
+--------------------------------------------------------------------------------
 
-## Version 0.1.6 (2025-02-09)
+ [CHANGED] Release to Github stuff...
 
-### Major Features
-- **Cross-Addon Communication**: Multiple iNIF users now coordinate when Greed+checkbox to avoid full 58s timer
-- **Full Localization System**: All text strings moved to localization files - ready for translations
-- **Party Announcements**: Fixed and working - announces to party/raid when auto-needing items
+v0.1.6 - Release
+--------------------------------------------------------------------------------
 
-### AceComm Integration
-- Added AceComm-3.0 for addon-to-addon communication
-- Implemented GREED_CHECKBOX message protocol
-- 2-second grace period for message coordination
-- Fixed race condition where grace period started too early
-- Grace period now correctly starts from your decision
+ [NEW] Major Features
+  - Cross-Addon Communication: Multiple iNIF users now coordinate when Greed+checkbox to avoid full 58s timer
+  - Full Localization System: All text strings moved to localization files - ready for translations
+  - Party Announcements: Fixed and working - announces to party/raid when auto-needing items
 
-### Localization
-- Created Localization/enUS.lua with ~110 localized strings
-- All hardcoded text replaced with L["tag"] references
-- Colors system integrated into localization
+ [NEW] AceComm Integration
+  - Added AceComm-3.0 for addon-to-addon communication
+  - Implemented GREED_CHECKBOX message protocol
+  - 2-second grace period for message coordination
+  - Fixed race condition where grace period started too early
+  - Grace period now correctly starts from your decision
 
-### Party Announcements
-- Fixed party announcements not working during auto-need
-- Removed WoW-incompatible color codes from party messages
-- Added 0.5s delay to prevent chat throttling/spam filters
-- Added comprehensive debug logging for troubleshooting
+ [CHANGED] Localization
+  - Created Localization/enUS.lua with ~110 localized strings
+  - All hardcoded text replaced with L["tag"] references
+  - Colors system integrated into localization
 
-### Technical Details
-- Replaced `firstINIFMessageTime` with `ourDecisionTime` for symmetric grace period
-- Messages received before decision are now buffered correctly
-- SendChatMessage now uses plain text (WoW auto-formats item links)
-- Debug messages show: partyMessages setting, IsInGroup/IsInRaid status, channel selection
-- OnUpdate interval reduced from 0.1s to 0.5s (80% CPU reduction)
+ [CHANGED] Party Announcements
+  - Fixed party announcements not working during auto-need
+  - Removed WoW-incompatible color codes from party messages
+  - Added 0.5s delay to prevent chat throttling/spam filters
+  - Added comprehensive debug logging for troubleshooting
 
-### Bug Fixes
-- Fixed race condition in AceComm grace period timing
-- Fixed party announcements being silently dropped by WoW
-- Fixed hardcoded strings in Print() and Debug() functions
-- Fixed test command output to use localization
+ [CHANGED] Technical Details
+  - Replaced firstINIFMessageTime with ourDecisionTime for symmetric grace period
+  - Messages received before decision are now buffered correctly
+  - SendChatMessage now uses plain text (WoW auto-formats item links)
+  - Debug messages show: partyMessages setting, IsInGroup/IsInRaid status, channel selection
+  - OnUpdate interval reduced from 0.1s to 0.5s (80% CPU reduction)
 
-### Dependencies
-- AceComm-3.0 (included)
-- CallbackHandler-1.0 (user must download)
-- ChatThrottleLib (included with AceComm)
+ [FIX] Bug
+  - Fixed race condition in AceComm grace period timing
+  - Fixed party announcements being silently dropped by WoW
+  - Fixed hardcoded strings in Print() and Debug() functions
+  - Fixed test command output to use localization
 
----
-
-## Version 0.1.5.8 (2025-02-09)
-
-### Bug Fixes
-- **CRITICAL**: Fixed party announcements by removing color codes from message
-- Party chat cannot contain manual color codes - they get stripped by WoW
-- Changed L["ChatPartyAutoNeed"] to plain text format
-- WoW now correctly formats and sends the party announcement
-
-### Technical Details
-- Removed Colors.iNIF, Colors.Yellow, and Colors.Reset from party message
-- SendChatMessage now receives clean plain text with item links
-- Item links are automatically formatted by WoW - no manual colors needed
+ [CHANGED] Dependencies
+  - AceComm-3.0 (included)
+  - CallbackHandler-1.0 (user must download)
+  - ChatThrottleLib (included with AceComm)
 
 ---
 
-## Version 0.1.5.7 (2025-02-09)
+v0.1.5.8 - Release
+--------------------------------------------------------------------------------
 
-### Debug
-- Added extensive debug logging for party announcements
-- Shows partyMessages setting, IsInGroup/IsInRaid status, channel selection
-- Shows when SendChatMessage is called and what message is sent
-- Debug messages appear when debug mode is enabled to troubleshoot party announce issues
+ [FIX] Bug
+  - CRITICAL: Fixed party announcements by removing color codes from message
+  - Party chat cannot contain manual color codes - they get stripped by WoW
+  - Changed L["ChatPartyAutoNeed"] to plain text format
+  - WoW now correctly formats and sends the party announcement
 
----
-
-## Version 0.1.5.6 (2025-02-09)
-
-### Bug Fixes
-- **CRITICAL**: Fixed party announcements not working during auto-need
-- Party announcements now delayed by 0.5s (same as chat notifications)
-- Prevents silent failures due to WoW's chat throttling and spam filters
-
-### Technical Details
-- Added C_Timer.After(0.5s) wrapper around both SendChatMessage calls
-- Ensures WoW has processed the Need roll before announcing to party/raid
-- Prevents message loss during loot spam period
-- Both local and party messages now appear synchronized
+ [CHANGED] Technical Details
+  - Removed Colors.iNIF, Colors.Yellow, and Colors.Reset from party message
+  - SendChatMessage now receives clean plain text with item links
+  - Item links are automatically formatted by WoW - no manual colors needed
 
 ---
 
-## Version 0.1.5.5 (2025-02-09)
+v0.1.5.7 - Release
+--------------------------------------------------------------------------------
 
-### Bug Fixes
-- Fixed remaining hardcoded strings in print statements
-- All Print() and Debug() functions now use localization
-- Fixed test command output to use L["tags"]
-- Standardized all message prefixes using localization
-
-### Technical Details
-- Added L["PrintPrefix"] and L["DebugPrefix"] for consistent messaging
-- Debug function simplified to use pre-formatted L["DebugInfo/Warning/Error"]
-- All ~100+ user-facing strings now fully localized
+ [FIX] Debug
+  - Added extensive debug logging for party announcements
+  - Shows partyMessages setting, IsInGroup/IsInRaid status, channel selection
+  - Shows when SendChatMessage is called and what message is sent
+  - Debug messages appear when debug mode is enabled to troubleshoot party announce issues
 
 ---
 
-## Version 0.1.5.4 (2025-02-09)
+v0.1.5.6 - Release
+--------------------------------------------------------------------------------
 
-### New Features
-- Added full localization system for future translations
-- All user-facing text now uses localization tags (L["tag"])
-- Created Localization/enUS.lua with ~100 localized strings
-- Colors table integrated into localization system
+ [FIX] Bug
+  - CRITICAL: Fixed party announcements not working during auto-need
+  - Party announcements now delayed by 0.5s (same as chat notifications)
+  - Prevents silent failures due to WoW's chat throttling and spam filters
 
-### Technical Details
-- Localization folder structure: Localization/locale.xml and Localization/enUS.lua
-- Fallback system ensures missing translations show English text
-- Ready for community translations (svSV, deDE, frFR, etc.)
-- All hardcoded strings replaced with L["tag"] references
-
----
-
-## Version 0.1.5.3 (2025-02-09)
-
-### Bug Fixes
-- **CRITICAL**: Fixed AceComm race condition where grace period started too early
-- Grace period now starts from YOUR decision, not when first message arrives
-- Prevents premature auto-rolling before all iNIF users have decided
-- Fixes incorrect "Greedviacomms" count (was 1, should be 2+)
-
-### Technical Details
-- Replaced `firstINIFMessageTime` with `ourDecisionTime`
-- Grace period now symmetric across all players
-- Messages received before our decision are buffered correctly
+ [CHANGED] Technical Details
+  - Added C_Timer.After(0.5s) wrapper around both SendChatMessage calls
+  - Ensures WoW has processed the Need roll before announcing to party/raid
+  - Prevents message loss during loot spam period
+  - Both local and party messages now appear synchronized
 
 ---
 
-## Version 0.1.5.2 (2025-02-09)
+v0.1.5.5 - Release
+--------------------------------------------------------------------------------
 
-### New Features
-- Added `/inif testcomm` command to test AceComm functionality solo
-- Simulates receiving GREED_CHECKBOX message from fake player
-- Temporarily enables debug mode to show message processing
-- Verifies message parsing and iNIFGreeds tracking
+ [FIX] Bug
+  - Fixed remaining hardcoded strings in print statements
+  - All Print() and Debug() functions now use localization
+  - Fixed test command output to use L["tags"]
+  - Standardized all message prefixes using localization
 
-### Improvements
-- Reduced OnUpdate interval from 0.1s to 0.5s (80% less CPU usage)
-- Checks every 0.5 seconds instead of every 0.1 seconds
-
----
-
-## Version 0.1.5.1 (2025-02-09)
-
-### New Features
-- Added AceComm-3.0 cross-addon communication
-- Multiple iNIF users in same group now auto-roll faster
-- When 2+ iNIF users click Greed+checkbox, they coordinate via addon messages
-- Auto-roll after 2-second grace period instead of waiting full 58 seconds
-- Fallback to timer still works for non-iNIF users
-
-### Technical
-- Integrated AceComm-3.0, CallbackHandler-1.0, and ChatThrottleLib
-- Added "iNIF" comm prefix for party/raid messages
-- Message format: "GREED_CHECKBOX|rollID|itemLink"
-- 2-second grace period allows message propagation
-- Debug messages for comm send/receive only show in debug mode
+ [CHANGED] Technical Details
+  - Added L["PrintPrefix"] and L["DebugPrefix"] for consistent messaging
+  - Debug function simplified to use pre-formatted L["DebugInfo/Warning/Error"]
+  - All ~100+ user-facing strings now fully localized
 
 ---
 
-## Version 0.1.5 (2025-02-09)
+v0.1.5.4 - Release
+--------------------------------------------------------------------------------
 
-### New Features
-- Added Shift+Left click minimap icon to show hidden loot frames
-- Party messages now use clickable item links instead of plain text
+ [NEW] New Features
+  - Added full localization system for future translations
+  - All user-facing text now uses localization tags (L["tag"])
+  - Created Localization/enUS.lua with ~100 localized strings
+  - Colors table integrated into localization system
 
-### Bug Fixes
-- Fixed [Loot]: prefix appearing in player names in Need messages
-- Fixed Pass detection (critical bug - Pass rolls were never being tracked)
-
-### Improvements
-- Checkbox background now fully transparent (no color conflicts with elite boss frames)
-- Debug messages now use severity levels (INFO/WARNING/ERROR)
-- Loaded message always shows without INFO prefix
-- Debug activation message uses red warning text
-- Removed "Debug mode deactivated" messages
-
-### Minimap Icon Controls
-- Left Click: Enable/Disable addon
-- Shift+Left Click: Show hidden loot frames
-- Right Click: Open settings
+ [CHANGED] Technical Details
+  - Localization folder structure: Localization/locale.xml and Localization/enUS.lua
+  - Fallback system ensures missing translations show English text
+  - Ready for community translations (svSV, deDE, frFR, etc.)
+  - All hardcoded strings replaced with L["tag"] references
 
 ---
 
-## Version 0.1.4.x (Previous Development Versions)
+v0.1.5.3 - Release
+--------------------------------------------------------------------------------
 
-### Core Features
-- Smart loot monitoring with Greed+Checkbox system
-- Automatic Need rolling when others Need
-- Greed at end of timer if everyone Greeds
-- Party/raid announcements for auto-Need decisions
-- Loot frame hiding during monitoring mode
-- Debug mode with timer window
-- Settings panel with customization options
-- Minimap icon integration
-- Multiple Classic WoW version support (Vanilla, TBC, WotLK, Cata, MoP)
+ [FIX] Bug
+  - CRITICAL: Fixed AceComm race condition where grace period started too early
+  - Grace period now starts from YOUR decision, not when first message arrives
+  - Prevents premature auto-rolling before all iNIF users have decided
+  - Fixes incorrect "Greedviacomms" count (was 1, should be 2+)
+
+ [CHANGED] Technical Details
+  - Replaced firstINIFMessageTime with ourDecisionTime
+  - Grace period now symmetric across all players
+  - Messages received before our decision are buffered correctly
+
+---
+
+v0.1.5.2 - Release
+--------------------------------------------------------------------------------
+
+ [NEW] New Features
+  - Added /inif testcomm command to test AceComm functionality solo
+  - Simulates receiving GREED_CHECKBOX message from fake player
+  - Temporarily enables debug mode to show message processing
+  - Verifies message parsing and iNIFGreeds tracking
+
+ [CHANGED] Improvements
+  - Reduced OnUpdate interval from 0.1s to 0.5s (80% less CPU usage)
+  - Checks every 0.5 seconds instead of every 0.1 seconds
+
+---
+
+v0.1.5.1 - Release
+--------------------------------------------------------------------------------
+
+ [NEW] New Features
+  - Added AceComm-3.0 cross-addon communication
+  - Multiple iNIF users in same group now auto-roll faster
+  - When 2+ iNIF users click Greed+checkbox, they coordinate via addon messages
+  - Auto-roll after 2-second grace period instead of waiting full 58 seconds
+  - Fallback to timer still works for non-iNIF users
+
+ [CHANGED] Technical
+  - Integrated AceComm-3.0, CallbackHandler-1.0, and ChatThrottleLib
+  - Added "iNIF" comm prefix for party/raid messages
+  - Message format: "GREED_CHECKBOX|rollID|itemLink"
+  - 2-second grace period allows message propagation
+  - Debug messages for comm send/receive only show in debug mode
+
+---
+
+v0.1.5 - Release
+--------------------------------------------------------------------------------
+
+ [NEW] New Features
+  - Added Shift+Left click minimap icon to show hidden loot frames
+  - Party messages now use clickable item links instead of plain text
+
+ [FIX] Bug
+  - Fixed [Loot]: prefix appearing in player names in Need messages
+  - Fixed Pass detection (critical bug - Pass rolls were never being tracked)
+
+ [CHANGED] Improvements
+  - Checkbox background now fully transparent (no color conflicts with elite boss frames)
+  - Debug messages now use severity levels (INFO/WARNING/ERROR)
+  - Loaded message always shows without INFO prefix
+  - Debug activation message uses red warning text
+  - Removed "Debug mode deactivated" messages
+
+ [NEW] Minimap Icon Controls
+  - Left Click: Enable/Disable addon
+  - Shift+Left Click: Show hidden loot frames
+  - Right Click: Open settings
+
+---
+
+v0.1.4.x - Release
+--------------------------------------------------------------------------------
+
+ [NEW] Core Features
+  - Smart loot monitoring with Greed+Checkbox system
+  - Automatic Need rolling when others Need
+  - Greed at end of timer if everyone Greeds
+  - Party/raid announcements for auto-Need decisions
+  - Loot frame hiding during monitoring mode
+  - Debug mode with timer window
+  - Settings panel with customization options
+  - Minimap icon integration
+  - Multiple Classic WoW version support (Vanilla, TBC, WotLK, Cata, MoP)
