@@ -836,9 +836,19 @@ function iNIF.EnhanceRollFrame(frame, rollID)
     -- Roll count labels (Need / Greed / Pass counters)
     -- Positioned bottom-right of the button icon, matching default WoW roll count style
     if iNIFDB.showRollCounts ~= false then
-        local needBtn  = frame.NeedButton  or frame.needButton
-        local greedBtn = frame.GreedButton or frame.greedButton
-        local passBtn  = frame.PassButton  or frame.passButton
+        local needBtn  = frame.NeedButton  or frame.needButton  or frame.RollButtonNeed  or frame.ButtonNeed
+        local greedBtn = frame.GreedButton or frame.greedButton or frame.RollButtonGreed or frame.ButtonGreed
+        local passBtn  = frame.PassButton  or frame.passButton  or frame.RollButtonPass  or frame.ButtonPass
+
+        if iNIFDB.debug and iNIF.ElvUILoaded and (not needBtn or not greedBtn or not passBtn) then
+            local childNames = {}
+            for k, v in pairs(frame) do
+                if type(v) == "table" and type(k) == "string" then
+                    table.insert(childNames, k)
+                end
+            end
+            Debug("ElvUI frame button lookup failed. Frame keys: " .. table.concat(childNames, ", "), 2)
+        end
 
         local function MakeCountLabel(anchorBtn, r, g, b)
             local anchor = anchorBtn.icon or anchorBtn.Icon or anchorBtn
@@ -979,8 +989,8 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                         return
                     end
 
-                    -- Hide the Blizzard loot frame (GroupLootFrame) (unless debug mode is on or user disabled frame hiding)
-                    if not iNIFDB.debug and iNIFDB.hideLootFrame then
+                    -- Hide the Blizzard loot frame (GroupLootFrame) (unless debug mode is on, user disabled frame hiding, or ElvUI is managing it)
+                    if not iNIFDB.debug and iNIFDB.hideLootFrame and not iNIF.ElvUILoaded then
                         frame:Hide()
                     end
                     if iNIFDB.enchanterMode then

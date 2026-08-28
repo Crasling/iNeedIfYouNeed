@@ -117,6 +117,7 @@ iNIF.activeRolls = {} -- Track active loot rolls
 iNIF.eventFrame = CreateFrame("Frame")
 iNIF.timerWindow = nil -- Timer display window
 iNIF.InCombat = false -- Combat state flag
+iNIF.ElvUILoaded = (IsAddOnLoaded and IsAddOnLoaded("ElvUI")) or false
 
 -- Enchanter DE tracking (session-only)
 iNIF.enchanterHistory = {} -- { {itemLink, mats={{matLink,count}}, timestamp}, ... }

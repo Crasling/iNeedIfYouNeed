@@ -1,5 +1,10 @@
 # iNeedIfYouNeed - Changelog
 
+## Version 0.4.7
+
+### Changed
+- Added Anniversary TBC client interface 20506 support
+
 ## Version 0.4.6
 
 ### Fixes

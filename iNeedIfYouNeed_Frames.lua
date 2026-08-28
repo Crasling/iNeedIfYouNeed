@@ -60,6 +60,9 @@ local function OnEvent(self, event, ...)
             C_Timer.After(2, function()
                 local gameName = iNIF.GameVersionName or "Unknown Version"
                 print(L["DebugPrefix"] .. string.format(L["StartupMessage"], Title, gameName, Colors.Green .. "v" .. Version .. Colors.iNIF))
+                if iNIF.ElvUILoaded then
+                    Debug("ElvUI detected — frame hide suppressed, extended frame search delay active", 3)
+                end
 
                 -- Welcome message (once per version)
                 if iNIFDB.WelcomeMessage ~= Version then
@@ -180,8 +183,9 @@ local function OnEvent(self, event, ...)
 
         Debug("Started timer for rollID: " .. rollID .. ", stored itemLink: " .. tostring(activeRolls[rollID].itemLink) .. ", duration: 60s")
 
-        -- Find and enhance the roll frame
-        C_Timer.After(0.1, function()
+        -- Find and enhance the roll frame (give ElvUI extra time to skin the frame)
+        local frameSearchDelay = iNIF.ElvUILoaded and 0.3 or 0.1
+        C_Timer.After(frameSearchDelay, function()
             -- Try to find the frame (different Classic versions have different frame names)
             for i = 1, 4 do
                 local frame = _G["GroupLootFrame" .. i] or _G["LootRollFrame" .. i]
@@ -233,7 +237,7 @@ local function OnEvent(self, event, ...)
             activeRolls[rollID] = nil
         end
 
-    elseif event == "CHAT_MSG_LOOT" then
+    elseif event == "CHAT_MSG_LOOT" or event == "CHAT_MSG_SYSTEM" then
         -- Don't process if addon is disabled
         if not iNIFDB.enabled then
             return
@@ -241,38 +245,35 @@ local function OnEvent(self, event, ...)
 
         local message = ...
 
-        -- Pattern: "[Loot]: PlayerName has selected Need for: [Item Link]"
-        -- Strip the [Loot]: prefix if present
+        -- Strip any channel prefix like "[Loot]: " that some versions prepend
         local cleanMessage = message:gsub("^%[.-%]:%s*", "")
 
         local playerName, itemLink = cleanMessage:match("^(.-)%s+has selected Need for:%s*(.+)$")
         if playerName and itemLink then
-            -- Clean player name from all WoW markup codes AND [Loot]: prefix immediately after parsing
             playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-            Debug("CHAT_MSG_LOOT: " .. playerName .. " needed " .. itemLink)
+            Debug(event .. ": " .. playerName .. " needed " .. itemLink)
             iNIF.OnNeedDetected(playerName, itemLink)
             return
         end
 
-        -- Pattern: "[Loot]: PlayerName has selected Greed for: [Item Link]"
         playerName, itemLink = cleanMessage:match("^(.-)%s+has selected Greed for:%s*(.+)$")
         if playerName and itemLink then
-            -- Clean player name from all WoW markup codes AND [Loot]: prefix immediately after parsing
             playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-            Debug("CHAT_MSG_LOOT: " .. playerName .. " greeded " .. itemLink)
+            Debug(event .. ": " .. playerName .. " greeded " .. itemLink)
             iNIF.OnGreedDetected(playerName, itemLink)
             return
         end
 
-        -- Pattern: "[Loot]: PlayerName passed on: [Item Link]"
         playerName, itemLink = cleanMessage:match("^(.-)%s+passed on:%s*(.+)$")
         if playerName and itemLink then
-            -- Clean player name from all WoW markup codes AND [Loot]: prefix immediately after parsing
             playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-            Debug("CHAT_MSG_LOOT: " .. playerName .. " passed " .. itemLink)
+            Debug(event .. ": " .. playerName .. " passed " .. itemLink)
             iNIF.OnPassDetected(playerName, itemLink)
             return
         end
+
+        -- Only continue with loot-receive tracking for CHAT_MSG_LOOT
+        if event == "CHAT_MSG_SYSTEM" then return end
 
         -- Pattern: "You receive loot: [Item Link]" or "PlayerName receives loot: [Item Link]"
         local selfLootLink = cleanMessage:match("^You receive loot:%s*(.+)%.$")
@@ -385,6 +386,7 @@ iNIF.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 iNIF.eventFrame:RegisterEvent("START_LOOT_ROLL")
 iNIF.eventFrame:RegisterEvent("CANCEL_LOOT_ROLL")
 iNIF.eventFrame:RegisterEvent("CHAT_MSG_LOOT")
+iNIF.eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
 iNIF.eventFrame:RegisterEvent("LOOT_BIND_CONFIRM")
 iNIF.eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 iNIF.eventFrame:SetScript("OnEvent", OnEvent)
