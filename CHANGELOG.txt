@@ -5,6 +5,7 @@
 v0.4.7 - Release
 --------------------------------------------------------------------------------
 
+ [CHANGED] Added Classic Era client interface 11509 support
  [CHANGED] Added Anniversary TBC client interface 20506 support
  [CHANGED] Removed deprecated iCommunityChat from the Other Addons panel
 

@@ -1,4 +1,4 @@
-## Interface: 11506, 11508, 20505, 20506, 30405, 40401, 40402, 50503, 120001
+## Interface: 11506, 11508, 11509, 20505, 20506, 30405, 40401, 40402, 50503, 120001
 ## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.4.7|r
 ## Version: 0.4.7
 ## Notes: |cffff9716Smart Loot addOn|n|cFFFF0000Dont let them ninja without needing back.|r
