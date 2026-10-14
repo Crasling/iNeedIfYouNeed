@@ -18,7 +18,6 @@ local Version = iNIF.Version
 local activeRolls = iNIF.activeRolls
 local AceComm = iNIF.AceComm
 local Print = function(...) return iNIF.Print(...) end
-local Debug = function(...) return iNIF.Debug(...) end
 local CountTable = function(...) return iNIF.CountTable(...) end
 local HasActiveRolls = function(...) return iNIF.HasActiveRolls(...) end
 local UpdateAllCheckboxes = iNIF.UpdateAllCheckboxes
@@ -79,8 +78,8 @@ SlashCmdList["iNIF"] = function(msg)
             return
         end
         print(L["PrintPrefix"] .. (L["NinjaIncidentsHeader"] or Colors.Red .. "Ninja Incidents:" .. Colors.Reset))
-        for name, data in pairs(iNIF.ninjaIncidents) do
-            print("  " .. Colors.Yellow .. name .. Colors.Reset .. ": " .. data.count .. " incidents")
+        for _, data in pairs(iNIF.ninjaIncidents) do
+            print("  " .. Colors.Yellow .. (data.name or "Unknown") .. Colors.Reset .. ": " .. data.count .. " incidents")
             for _, inc in ipairs(data.incidents) do
                 print("    - " .. (inc.itemLink or "?") .. " (" .. inc.armorType .. ")")
             end
@@ -93,13 +92,7 @@ SlashCmdList["iNIF"] = function(msg)
         end
 
     elseif msg == "debug" then
-        iNIFDB.debug = not iNIFDB.debug
-        UpdateAllCheckboxes("debug", iNIFDB.debug)
-
-        -- Show activation warning (like iWR) - second sentence in red
-        if iNIFDB.debug then
-            print(L["DebugModeActivatedFull"])
-        end
+        iNIF.SetDebugMode(not iNIFDB.debug, true)
 
     elseif msg == "test" then
         -- Test if START_LOOT_ROLL event is being caught
@@ -151,7 +144,7 @@ SlashCmdList["iNIF"] = function(msg)
         -- Enable debug mode temporarily to see output
         local debugWasOff = not iNIFDB.debug
         if debugWasOff then
-            iNIFDB.debug = true
+            iNIF.SetDebugMode(true, false)
             print(L["TestDebugTempEnabled"])
         end
 
@@ -167,7 +160,7 @@ SlashCmdList["iNIF"] = function(msg)
 
         -- Check if it was tracked
         local roll = activeRolls[testRollID]
-        if roll and roll.iNIFGreeds and roll.iNIFGreeds[fakePlayer] then
+        if roll and roll.iNIFGreeds and roll.iNIFGreeds[iNIF.GetPlayerKey(fakePlayer)] then
             print(L["TestCommSuccess1"])
             print(L["TestCommSuccess2"])
             print(L["TestCommTotalUsers"] .. Colors.Yellow .. (CountTable(roll.iNIFGreeds) + 1) .. L["TestCommIncludingYou"] .. Colors.Reset)
@@ -179,7 +172,7 @@ SlashCmdList["iNIF"] = function(msg)
         -- Restore debug mode if it was off
         if debugWasOff then
             C_Timer.After(3, function()
-                iNIFDB.debug = false
+                iNIF.SetDebugMode(false, false)
                 print(L["TestDebugRestored"])
             end)
         end

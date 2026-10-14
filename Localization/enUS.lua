@@ -160,6 +160,7 @@ L["SettingsDebugModeDesc"] = Colors.Gray .. "Enables verbose debug messages in c
 L["DebugModeActivated"] = Colors.Red .. "Debug Mode is activated. " .. Colors.Reset
 L["DebugModeWarning"] = "This is not recommended for common use and will cause message spam."
 L["DebugModeActivatedFull"] = Colors.iNIF .. "[iNIF]: " .. Colors.White .. "INFO: " .. Colors.Reset .. Colors.iNIF .. "Debug Mode is activated. " .. Colors.Red .. "This is not recommended for common use and will cause message spam." .. Colors.Reset
+L["DebugModeDisabled"] = "Debug Mode is disabled."
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                         Settings Panel - iWR Tab                               │

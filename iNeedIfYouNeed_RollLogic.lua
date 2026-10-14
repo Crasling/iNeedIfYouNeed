@@ -33,9 +33,14 @@ local activeRolls = iNIF.activeRolls
 local AceComm = iNIF.AceComm
 
 -- Forward declarations for local functions used across sections
-local CheckIfAllINIFGreeded
 local CheckIfAllGreeded
 local CheckEnchanterMode
+
+local function GetRemainingRollSeconds(rollID)
+    local milliseconds = GetLootRollTimeLeft(rollID)
+    if type(milliseconds) ~= "number" or not iNIF.IsSafeValue(milliseconds) then return nil end
+    return milliseconds / 1000
+end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                              Timer Window                                      │
@@ -132,8 +137,7 @@ function iNIF.CreateTimerWindow()
                 end
 
                 local text = frame.rollTexts[count]
-                local elapsed = GetTime() - roll.startTime
-                local remaining = roll.initialDuration - elapsed
+                local remaining = GetRemainingRollSeconds(rollID) or 0
 
                 if remaining < 0 then remaining = 0 end
 
@@ -185,7 +189,7 @@ end
 -- Level 1 = ERROR (red)
 -- Level 2 = WARNING (yellow)
 -- Level 3 = INFO (white) - default
-function iNIF.Debug(msg, level)
+function iNIF:DebugMsg(msg, level)
     if iNIFDB.debug then
         level = level or 3 -- Default to INFO
 
@@ -197,6 +201,33 @@ function iNIF.Debug(msg, level)
             print(L["DebugInfo"] .. msg)
         end
     end
+end
+
+-- All debug-mode entry points use this function so the About page, minimap
+-- menu, slash command, checkboxes, and monitor window cannot drift apart.
+function iNIF.SetDebugMode(enabled, announce)
+    enabled = enabled and true or false
+    iNIFDB.debug = enabled
+    iNIF.UpdateAllCheckboxes("debug", enabled)
+
+    if iNIF.timerWindow then
+        if enabled or not iNIFDB.hideMonitorWindow then
+            iNIF.timerWindow:Show()
+        else
+            iNIF.timerWindow:Hide()
+        end
+    end
+
+    if announce then
+        if enabled then
+            print(L["DebugModeActivatedFull"])
+        else
+            print(L["DebugPrefix"] .. (L["DebugModeDisabled"] or "Debug Mode is disabled."))
+        end
+    end
+
+    if enabled then iNIF:DebugMsg("Debug output enabled from the settings interface.", 3) end
+    return enabled
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
@@ -224,7 +255,6 @@ end
 
 -- Local aliases for internal use in this file
 local Print = function(...) return iNIF.Print(...) end
-local Debug = function(...) return iNIF.Debug(...) end
 local CountTable = function(...) return iNIF.CountTable(...) end
 local HasActiveRolls = function(...) return iNIF.HasActiveRolls(...) end
 
@@ -232,7 +262,7 @@ local HasActiveRolls = function(...) return iNIF.HasActiveRolls(...) end
 -- │                         Ninja Detection Tables                                │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
--- TBC Classic armor proficiencies: what each class CAN equip
+-- Forever armor proficiencies: what each class can equip.
 local CLASS_ARMOR_PROFICIENCY = {
     WARRIOR     = { Cloth = true, Leather = true, Mail = true, Plate = true },
     PALADIN     = { Cloth = true, Leather = true, Mail = true, Plate = true },
@@ -259,56 +289,48 @@ local ARMOR_SUBCLASS = {
 
 -- Get a group member's english class by name
 function iNIF.GetGroupMemberClass(playerName)
-    local numMembers = GetNumGroupMembers and GetNumGroupMembers() or 0
-    for i = 1, numMembers do
-        local unitID
-        if IsInRaid() then
-            unitID = "raid" .. i
-        else
-            if i < numMembers then
-                unitID = "party" .. i
-            else
-                unitID = "player"
-            end
-        end
-        local name = UnitName(unitID)
-        if name and name == playerName then
-            local _, englishClass = UnitClass(unitID)
-            return englishClass
-        end
-    end
-    return nil
+    local member = iNIF.GetGroupMember(playerName)
+    return member and member.class or nil
 end
 
 -- Extract item ID from an item link
 local function GetItemIDFromLink(itemLink)
-    if not itemLink then return nil end
+    if type(itemLink) ~= "string" or not iNIF.IsSafeValue(itemLink) then return nil end
     local itemID = itemLink:match("item:(%d+)")
     return tonumber(itemID)
 end
 
+function iNIF.LootItemsMatch(firstItem, secondItem)
+    if not iNIF.IsSafeValue(firstItem) or not iNIF.IsSafeValue(secondItem) then return false end
+    local firstID = GetItemIDFromLink(firstItem)
+    local secondID = GetItemIDFromLink(secondItem)
+    if firstID and secondID then return firstID == secondID end
+    return type(firstItem) == "string" and firstItem == secondItem
+end
+
 -- Check if a Need roll is a ninja (wrong armor type)
-function iNIF.CheckNinjaForItem(playerName, playerClass, itemLink, retries)
+function iNIF.CheckNinjaForItem(playerName, playerClass, itemLink, itemDataLoaded)
     if not iNIFDB.ninjaDetection then return end
-    retries = retries or 0
 
     local itemID = GetItemIDFromLink(itemLink)
     if not itemID then return end
 
     local name, link, quality, itemLevel, reqLevel, itemType, itemSubType,
-          stackCount, equipLoc, texture, sellPrice, classID, subclassID = GetItemInfo(itemID)
+          stackCount, equipLoc, texture, sellPrice, classID, subclassID = C_Item.GetItemInfo(itemID)
+
+    if not iNIF.IsSafeValue(classID) or not iNIF.IsSafeValue(subclassID) then return end
 
     if not classID then
-        -- Item not cached yet, retry after a short delay (max 2 retries)
-        if retries < 2 then
-            C_Timer.After(0.5, function()
-                iNIF.CheckNinjaForItem(playerName, playerClass, itemLink, retries + 1)
+        if not itemDataLoaded then
+            Item:CreateFromItemID(itemID):ContinueOnItemLoad(function()
+                iNIF.CheckNinjaForItem(playerName, playerClass, itemLink, true)
             end)
         end
         return
     end
 
     -- Only check armor items (classID 4, subclassID 1-4: Cloth/Leather/Mail/Plate)
+    if type(classID) ~= "number" or type(subclassID) ~= "number" then return end
     if classID ~= 4 or subclassID < 1 or subclassID > 4 then
         return
     end
@@ -324,14 +346,18 @@ end
 
 -- Handle a detected ninja
 function iNIF.OnNinjaDetected(playerName, playerClass, itemLink, armorType)
-    Debug("NINJA DETECTED: " .. playerName .. " (" .. playerClass .. ") rolled Need on " .. armorType .. " armor: " .. (itemLink or "?"), 2)
+    playerName = iNIF.CleanPlayerName(playerName)
+    local playerKey = iNIF.GetPlayerKey(playerName)
+    if not playerName or not playerKey then return end
+    iNIF:DebugMsg("NINJA DETECTED: " .. playerName .. " (" .. playerClass .. ") rolled Need on " .. armorType .. " armor: " .. (itemLink or "?"), 2)
 
     -- Record incident
-    if not iNIF.ninjaIncidents[playerName] then
-        iNIF.ninjaIncidents[playerName] = { count = 0, incidents = {} }
+    if not iNIF.ninjaIncidents[playerKey] then
+        iNIF.ninjaIncidents[playerKey] = { name = playerName, count = 0, incidents = {} }
     end
-    iNIF.ninjaIncidents[playerName].count = iNIF.ninjaIncidents[playerName].count + 1
-    table.insert(iNIF.ninjaIncidents[playerName].incidents, {
+    iNIF.ninjaIncidents[playerKey].name = playerName
+    iNIF.ninjaIncidents[playerKey].count = iNIF.ninjaIncidents[playerKey].count + 1
+    table.insert(iNIF.ninjaIncidents[playerKey].incidents, {
         itemLink = itemLink,
         armorType = armorType,
         timestamp = GetTime(),
@@ -364,26 +390,38 @@ end
 -- Track that a player participated in a roll
 function iNIF.TrackRollParticipation(playerName, rollID, rollType)
     if not iNIFDB.rollTracker then return end
-    -- Defensive cleaning: strip [Loot]: prefix and WoW markup
-    playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+    playerName = iNIF.CleanPlayerName(playerName)
+    local playerKey = iNIF.GetPlayerKey(playerName)
+    if not playerName or not playerKey then return end
 
-    if not iNIF.rollTracker.players[playerName] then
-        iNIF.rollTracker.players[playerName] = { wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
+    -- The game can repeat loot chat lines. Count each player only once per roll.
+    local roll = iNIF.activeRolls[rollID]
+    if roll then
+        roll.trackerParticipants = roll.trackerParticipants or {}
+        if roll.trackerParticipants[playerKey] then return end
+        roll.trackerParticipants[playerKey] = rollType or true
     end
-    iNIF.rollTracker.players[playerName].rolls = iNIF.rollTracker.players[playerName].rolls + 1
+
+    if not iNIF.rollTracker.players[playerKey] then
+        iNIF.rollTracker.players[playerKey] = { name = playerName, wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
+    end
+    iNIF.rollTracker.players[playerKey].name = playerName
+    iNIF.rollTracker.players[playerKey].rolls = iNIF.rollTracker.players[playerKey].rolls + 1
     iNIF.rollTracker.totalRolls = iNIF.rollTracker.totalRolls + 1
 end
 
 -- Track that a player won a roll
 function iNIF.TrackRollWin(playerName, itemLink)
     if not iNIFDB.rollTracker then return end
-    -- Defensive cleaning: strip [Loot]: prefix and WoW markup
-    playerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+    playerName = iNIF.CleanPlayerName(playerName)
+    local playerKey = iNIF.GetPlayerKey(playerName)
+    if not playerName or not playerKey then return end
 
-    if not iNIF.rollTracker.players[playerName] then
-        iNIF.rollTracker.players[playerName] = { wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
+    if not iNIF.rollTracker.players[playerKey] then
+        iNIF.rollTracker.players[playerKey] = { name = playerName, wins = 0, rolls = 0, needWins = 0, greedWins = 0 }
     end
-    iNIF.rollTracker.players[playerName].wins = iNIF.rollTracker.players[playerName].wins + 1
+    iNIF.rollTracker.players[playerKey].name = playerName
+    iNIF.rollTracker.players[playerKey].wins = iNIF.rollTracker.players[playerKey].wins + 1
 
     table.insert(iNIF.rollTracker.history, {
         itemLink = itemLink,
@@ -391,7 +429,7 @@ function iNIF.TrackRollWin(playerName, itemLink)
         timestamp = GetTime(),
     })
 
-    Debug("Roll win tracked: " .. playerName .. " won " .. (itemLink or "?"), 3)
+    iNIF:DebugMsg("Roll win tracked: " .. playerName .. " won " .. (itemLink or "?"), 3)
 
     -- Update luck meter if visible
     if iNIF.UpdateLuckMeter then iNIF.UpdateLuckMeter() end
@@ -472,7 +510,7 @@ local function CreateCheckbox(parent, rollID)
         if iNIFDB.checkboxRememberState then
             iNIFDB.checkboxChecked = self:GetChecked()
         end
-        Debug("Checkbox toggled: " .. tostring(self:GetChecked()))
+        iNIF:DebugMsg("Checkbox toggled: " .. tostring(self:GetChecked()))
     end)
 
     return checkbox
@@ -489,7 +527,7 @@ local function ProcessRoll(rollID)
 
     -- Only auto-roll if the checkbox was enabled and greed was clicked
     if not roll.checkboxEnabled or not roll.greedClicked then
-        Debug("Skipping auto-roll for rollID: " .. rollID .. " (checkbox not enabled or greed not clicked)")
+        iNIF:DebugMsg("Skipping auto-roll for rollID: " .. rollID .. " (checkbox not enabled or greed not clicked)")
         activeRolls[rollID] = nil
         return
     end
@@ -517,17 +555,18 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
         return
     end
 
-    -- Clean sender name (remove realm)
-    sender = Ambiguate(sender, "short")
-    local myName = UnitName("player")
+    sender = iNIF.CleanPlayerName(sender)
+    local senderKey = iNIF.GetPlayerKey(sender)
+    if not sender or not senderKey then return end
+    local myName = iNIF.GetUnitPlayerName("player")
 
     -- Ignore our own messages
-    if sender == myName then
+    if iNIF.PlayerNamesMatch(sender, myName) then
         return
     end
 
     if iNIFDB.debug then
-        Debug("Received comm from " .. sender .. ": " .. message, 3) -- INFO
+        iNIF:DebugMsg("Received comm from " .. sender .. ": " .. message, 3) -- INFO
     end
 
     -- Parse message: "GREED_CHECKBOX|<rollID>|<itemLink>"
@@ -537,7 +576,7 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
         local rollID = tonumber(rollIDStr)
         if not rollID then
             if iNIFDB.debug then
-                Debug("Invalid rollID in comm message: " .. (rollIDStr or "nil"), 2) -- WARNING
+                iNIF:DebugMsg("Invalid rollID in comm message: " .. (rollIDStr or "nil"), 2) -- WARNING
             end
             return
         end
@@ -545,14 +584,14 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
         local roll = activeRolls[rollID]
         if not roll then
             if iNIFDB.debug then
-                Debug("Received comm for unknown rollID: " .. rollID, 2) -- WARNING
+                iNIF:DebugMsg("Received comm for unknown rollID: " .. rollID, 2) -- WARNING
             end
             return
         end
 
         if roll.processed then
             if iNIFDB.debug then
-                Debug("Received comm for already-processed rollID: " .. rollID, 3) -- INFO
+                iNIF:DebugMsg("Received comm for already-processed rollID: " .. rollID, 3) -- INFO
             end
             return
         end
@@ -562,14 +601,14 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
             roll.iNIFGreeds = {}
         end
 
-        roll.iNIFGreeds[sender] = true
+        roll.iNIFGreeds[senderKey] = sender
         if iNIFDB.debug then
-            Debug("Tracked iNIF Greed+checkbox from " .. sender .. " for rollID: " .. rollID .. " (total: " .. CountTable(roll.iNIFGreeds) .. ")", 3) -- INFO
+            iNIF:DebugMsg("Tracked iNIF Greed+checkbox from " .. sender .. " for rollID: " .. rollID .. " (total: " .. CountTable(roll.iNIFGreeds) .. ")", 3) -- INFO
         end
 
         -- Check if we should auto-roll based on iNIF decisions
         if roll.checkboxEnabled and roll.greedClicked then
-            CheckIfAllINIFGreeded(rollID)
+            CheckIfAllGreeded(rollID)
         end
 
     elseif msgType == "ENCHANTER_MODE" then
@@ -581,7 +620,7 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
 
         -- Track that another iNIF user is using Enchanter Mode on this roll
         roll.enchanterNeedSent = true -- Prevent us from also needing for disenchant
-        Debug("Received ENCHANTER_MODE from " .. sender .. " for rollID: " .. rollID .. " - skipping our enchanter need", 3)
+        iNIF:DebugMsg("Received ENCHANTER_MODE from " .. sender .. " for rollID: " .. rollID .. " - skipping our enchanter need", 3)
     end
 end
 
@@ -589,16 +628,17 @@ end
 -- │                            Decision Logic                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
--- Helper function to check if all party members have greeded
+-- Submit the held Greed as soon as every other eligible player has also chosen
+-- Greed. If anyone passes, keep waiting so a late Need can still be mirrored.
 CheckIfAllGreeded = function(rollID)
     local roll = activeRolls[rollID]
     if not roll or roll.processed or not roll.checkboxEnabled or not roll.greedClicked then
         return false
     end
 
-    -- Use the eligible count captured at START_LOOT_ROLL (only connected + visible players)
-    -- This avoids counting players who are offline or in a different zone
-    local partySize = roll.eligibleCount or 0
+    -- START_LOOT_ROLL stores only the other connected and visible players who
+    -- can participate. The local player is deliberately not part of this count.
+    local eligibleOtherCount = roll.eligibleCount or 0
 
     -- Count how many have greeded (from CHAT_MSG_LOOT)
     local greedCount = 0
@@ -624,60 +664,25 @@ CheckIfAllGreeded = function(rollID)
         passCount = passCount + 1
     end
 
-    Debug("Decision count: " .. greedCount .. " greeds (chat), " .. iNIFGreedCount .. " greeds (iNIF), " .. passCount .. " passes = " .. (greedCount + iNIFGreedCount + passCount) .. "/" .. partySize .. " for rollID " .. rollID)
+    local otherGreedCount = greedCount + iNIFGreedCount
+    local decidedCount = otherGreedCount + passCount
 
-    -- If everyone else has decided (greeded OR passed), roll Greed immediately
-    local decidedCount = greedCount + iNIFGreedCount + passCount
-    if partySize > 0 and decidedCount >= partySize then
-        Debug("Everyone decided: " .. greedCount .. " greeds, " .. passCount .. " passes. Auto-rolling Greed now.", 3) -- INFO
+    local decisionSignature = table.concat({ greedCount, iNIFGreedCount, passCount, eligibleOtherCount }, ":")
+    if roll.lastDecisionDebugSignature ~= decisionSignature then
+        roll.lastDecisionDebugSignature = decisionSignature
+        iNIF:DebugMsg("Other-player decisions: " .. greedCount .. " greeds (chat), "
+            .. iNIFGreedCount .. " greeds (iNIF), " .. passCount .. " passes = "
+            .. decidedCount .. "/" .. eligibleOtherCount
+            .. " for rollID " .. rollID)
+    end
+
+    if eligibleOtherCount > 0 and otherGreedCount >= eligibleOtherCount and passCount == 0 then
+        iNIF:DebugMsg("Every other eligible player chose Greed; submitting monitored Greed for rollID " .. rollID .. ".", 3)
         ProcessRoll(rollID)
         return true
     end
 
     return false
-end
-
--- Check if all iNIF users have decided (Greed+checkbox)
--- This allows faster auto-roll when multiple addon users are in the party
-CheckIfAllINIFGreeded = function(rollID)
-    local roll = activeRolls[rollID]
-    if not roll or roll.processed or not roll.checkboxEnabled or not roll.greedClicked then
-        return false
-    end
-
-    if not roll.iNIFGreeds then
-        return false
-    end
-
-    local iNIFUserCount = CountTable(roll.iNIFGreeds)
-
-    -- Require at least 1 other iNIF user to have decided
-    -- (If iNIFUserCount == 0, means only we have iNIF, so fall back to timer)
-    if iNIFUserCount < 1 then
-        return false
-    end
-
-    -- Don't count until WE have decided
-    if not roll.ourDecisionTime then
-        return false  -- We haven't clicked yet, messages are buffered
-    end
-
-    -- Grace period starts from OUR decision, not first message
-    local elapsed = GetTime() - roll.ourDecisionTime
-    if elapsed < 2 then
-        -- Still in grace period, waiting for other iNIF users to respond
-        if iNIFDB.debug and elapsed < 0.1 then
-            Debug("Grace period started (2s from our decision). Waiting for other iNIF users...", 3) -- INFO
-        end
-        return false
-    end
-
-    -- Don't auto-roll! Let CheckIfAllGreeded() handle the actual roll when EVERYONE decided
-    if iNIFDB.debug then
-        Debug("All iNIF users decided (" .. (iNIFUserCount + 1) .. " including self). Waiting for rest of party to decide...", 3) -- INFO
-    end
-    -- Return true to indicate iNIF coordination is complete, but don't ProcessRoll yet
-    return true
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
@@ -713,7 +718,7 @@ CheckEnchanterMode = function(rollID)
 
     local decidedCount = greedCount + iNIFGreedCount + passCount
 
-    Debug("Enchanter Mode check: " .. decidedCount .. "/" .. partySize .. " decided, needDetected=" .. tostring(roll.needDetected) .. ", quality=" .. tostring(roll.itemQuality))
+    iNIF:DebugMsg("Enchanter Mode check: " .. decidedCount .. "/" .. partySize .. " decided, needDetected=" .. tostring(roll.needDetected) .. ", quality=" .. tostring(roll.itemQuality))
 
     if partySize > 0 and decidedCount >= partySize then
         -- Everyone decided, nobody needed → Need for disenchant!
@@ -755,12 +760,41 @@ local function FormatRollCount(n)
     return tostring(n)
 end
 
+-- Forever's group-loot template uses lower-camel button keys, while newer
+-- templates use upper-camel keys. Resolve either layout in one place.
+local function GetRollButton(frame, kind)
+    if not frame or type(kind) ~= "string" then return nil end
+    local lowerKind = kind:lower()
+    local function Find(container)
+        if not container then return nil end
+        return container[kind .. "Button"] or container[lowerKind .. "Button"]
+            or container[kind] or container[lowerKind]
+    end
+    return Find(frame) or Find(frame.LootButtonContainer)
+end
+
+-- Forever owns group-roll frames through the modern GroupLootContainer.
+function iNIF.GetLootRollFrames()
+    local frames, seen = {}, {}
+    local function Add(frame)
+        if frame and not seen[frame] then
+            seen[frame] = true
+            frames[#frames + 1] = frame
+        end
+    end
+
+    local container = _G.GroupLootContainer
+    if container then
+        for _, frame in pairs(container.rollFrames) do Add(frame) end
+    end
+    return frames
+end
+
 -- Show or hide all count labels on currently visible roll frames.
 -- Called when the showRollCounts setting is toggled.
 function iNIF.RefreshRollCountLabels()
     local visible = iNIFDB.showRollCounts and true or false
-    for i = 1, 4 do
-        local frame = _G["GroupLootFrame" .. i] or _G["LootRollFrame" .. i]
+    for _, frame in ipairs(iNIF.GetLootRollFrames()) do
         if frame then
             if frame.iNIF_NeedCount  then frame.iNIF_NeedCount:SetShown(visible)  end
             if frame.iNIF_GreedCount then frame.iNIF_GreedCount:SetShown(visible) end
@@ -782,8 +816,7 @@ function iNIF.UpdateRollCounters(rollID)
 
     -- Fall back to scanning Blizzard GroupLootFrames
     if not frame then
-        for i = 1, 4 do
-            local f = _G["GroupLootFrame" .. i] or _G["LootRollFrame" .. i]
+        for _, f in ipairs(iNIF.GetLootRollFrames()) do
             if f and f:IsShown() and f.rollID == rollID then
                 frame = f
                 break
@@ -813,11 +846,11 @@ function iNIF.EnhanceRollFrame(frame, rollID)
 
     -- If already enhanced, just return (frame.rollID is updated by WoW automatically)
     if frame.iNIF_Enhanced then
-        Debug("Frame already enhanced for rollID: " .. tostring(rollID) .. " (using frame.rollID dynamically)")
+        iNIF:DebugMsg("Frame already enhanced for rollID: " .. tostring(rollID) .. " (using frame.rollID dynamically)")
         return
     end
 
-    Debug("Enhancing roll frame for rollID: " .. tostring(rollID))
+    iNIF:DebugMsg("Enhancing roll frame for rollID: " .. tostring(rollID))
 
     -- Create checkbox
     local checkbox = CreateCheckbox(frame, rollID)
@@ -836,18 +869,28 @@ function iNIF.EnhanceRollFrame(frame, rollID)
     -- Roll count labels (Need / Greed / Pass counters)
     -- Positioned bottom-right of the button icon, matching default WoW roll count style
     if iNIFDB.showRollCounts ~= false then
-        local needBtn  = frame.NeedButton  or frame.needButton  or frame.RollButtonNeed  or frame.ButtonNeed
-        local greedBtn = frame.GreedButton or frame.greedButton or frame.RollButtonGreed or frame.ButtonGreed
-        local passBtn  = frame.PassButton  or frame.passButton  or frame.RollButtonPass  or frame.ButtonPass
+        local needBtn = GetRollButton(frame, "Need")
+        local greedBtn = GetRollButton(frame, "Greed")
+        local passBtn = GetRollButton(frame, "Pass")
 
-        if iNIFDB.debug and iNIF.ElvUILoaded and (not needBtn or not greedBtn or not passBtn) then
+        if iNIFDB.debug and (not needBtn or not greedBtn or not passBtn) then
             local childNames = {}
             for k, v in pairs(frame) do
                 if type(v) == "table" and type(k) == "string" then
                     table.insert(childNames, k)
                 end
             end
-            Debug("ElvUI frame button lookup failed. Frame keys: " .. table.concat(childNames, ", "), 2)
+            local containerNames = {}
+            if frame.LootButtonContainer then
+                for k, v in pairs(frame.LootButtonContainer) do
+                    if type(v) == "table" and type(k) == "string" then
+                        table.insert(containerNames, k)
+                    end
+                end
+            end
+            iNIF:DebugMsg("Loot frame button lookup incomplete. Frame keys: "
+                .. table.concat(childNames, ", ") .. "; LootButtonContainer keys: "
+                .. table.concat(containerNames, ", "), 2)
         end
 
         local function MakeCountLabel(anchorBtn, r, g, b)
@@ -855,14 +898,16 @@ function iNIF.EnhanceRollFrame(frame, rollID)
             -- Create on the button itself, not the parent frame — children always
             -- render on top of their parent, so attaching to the button ensures
             -- the number draws above all of the button's own textures.
-            local lbl = anchorBtn:CreateFontString(nil, "OVERLAY", "NumberFontNormal", 7)
-            lbl:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 0, 1)
+            local lbl = anchorBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
+            lbl:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 1, 1)
+            lbl:SetWidth(26)
+            lbl:SetJustifyH("RIGHT")
             lbl:SetText("0")
             lbl:SetTextColor(r, g, b, 1)
-            local fontPath, fontSize = lbl:GetFont()
-            lbl:SetFont(fontPath, (fontSize or 10) + 2, "THICKOUTLINE")
+            local fontPath = GameFontHighlight:GetFont()
+            lbl:SetFont(fontPath, 13, "OUTLINE")
             lbl:SetShadowOffset(1, -1)
-            lbl:SetShadowColor(0, 0, 0, 1)
+            lbl:SetShadowColor(0, 0, 0, 0.9)
             return lbl
         end
 
@@ -871,18 +916,17 @@ function iNIF.EnhanceRollFrame(frame, rollID)
         if passBtn  then frame.iNIF_PassCount  = MakeCountLabel(passBtn,  0.65, 0.65, 0.65) end
     end
 
-    -- Store original Greed button click handler
-    local greedButton = frame.GreedButton or frame.greedButton
+    -- Forever routes clicks straight to its loot button even when an addon
+    -- child overlays it, so replace this one handler and retain the original
+    -- for ordinary unchecked Greed clicks.
+    local greedButton = GetRollButton(frame, "Greed")
     if greedButton then
-        -- Store the original OnClick handler
         local originalOnClick = greedButton:GetScript("OnClick")
-
-        -- Replace with our custom handler
         greedButton:SetScript("OnClick", function(self, button, ...)
             -- Use frame.rollID which WoW updates for each new roll
             local currentRollID = frame.rollID
             if not currentRollID then
-                Debug("No rollID on frame, calling original handler", 2) -- WARNING
+                iNIF:DebugMsg("No rollID on frame, calling original handler", 2) -- WARNING
                 if originalOnClick then
                     originalOnClick(self, button, ...)
                 end
@@ -896,19 +940,26 @@ function iNIF.EnhanceRollFrame(frame, rollID)
 
                 -- If roll is already processed, ignore this click (happens when RollOnLoot triggers the button again)
                 if roll and roll.processed then
-                    Debug("Ignoring Greed click on already-processed rollID: " .. currentRollID)
+                    iNIF:DebugMsg("Ignoring Greed click on already-processed rollID: " .. currentRollID)
+                    return
+                end
+
+                -- Some Forever button templates can emit more than one click
+                -- callback for a single press. Monitoring is armed only once.
+                if roll and roll.checkboxEnabled and roll.greedClicked then
                     return
                 end
 
                 -- If roll doesn't exist, create it now (fallback for missed START_LOOT_ROLL)
                 if not roll then
-                    Debug("Creating missing roll entry for rollID: " .. currentRollID, 2) -- WARNING
+                    iNIF:DebugMsg("Creating missing roll entry for rollID: " .. currentRollID, 2) -- WARNING
                     local texture, name, count, quality = GetLootRollItemInfo(currentRollID)
                     local itemLink = GetLootRollItemLink(currentRollID)
 
+                    local remaining = GetRemainingRollSeconds(currentRollID) or 0
                     activeRolls[currentRollID] = {
                         startTime = GetTime(),
-                        initialDuration = 60,
+                        initialDuration = remaining,
                         needDetected = false,
                         neededBy = nil,
                         processed = false,
@@ -927,13 +978,13 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                         passCount = 0,
                     }
                     roll = activeRolls[currentRollID]
-                    Debug("Created roll object, checking if it exists: " .. tostring(roll ~= nil) .. ", rollID=" .. currentRollID)
+                    iNIF:DebugMsg("Created roll object, checking if it exists: " .. tostring(roll ~= nil) .. ", rollID=" .. currentRollID)
 
                     -- Verify it was actually stored
                     if activeRolls[currentRollID] then
-                        Debug("Roll successfully stored in activeRolls[" .. currentRollID .. "]", 3) -- INFO
+                        iNIF:DebugMsg("Roll successfully stored in activeRolls[" .. currentRollID .. "]", 3) -- INFO
                     else
-                        Debug("Roll was NOT stored in activeRolls[" .. currentRollID .. "]!", 1) -- ERROR
+                        iNIF:DebugMsg("Roll was NOT stored in activeRolls[" .. currentRollID .. "]!", 1) -- ERROR
                     end
                 end
 
@@ -944,7 +995,7 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                     roll.frame = frame
                     roll.checkbox = checkbox
 
-                    Debug("Greed clicked with checkbox enabled for rollID: " .. currentRollID)
+                    iNIF:DebugMsg("Greed clicked with checkbox enabled for rollID: " .. currentRollID)
 
                     -- Send AceComm message to notify other iNIF users
                     if AceComm and not roll.iNIFCommSent and (IsInGroup() or IsInRaid()) then
@@ -953,14 +1004,14 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                         local message = "GREED_CHECKBOX|" .. currentRollID .. "|" .. roll.itemLink
                         iNIF:SendCommMessage("iNIF", message, distribution, nil, "NORMAL")
                         if iNIFDB.debug then
-                            Debug("Sent GREED_CHECKBOX comm: " .. message .. " on " .. distribution, 3) -- INFO
+                            iNIF:DebugMsg("Sent GREED_CHECKBOX comm: " .. message .. " on " .. distribution, 3) -- INFO
                         end
                     end
 
                     -- Check if someone already needed BEFORE we clicked Greed+Checkbox
                     -- In Enchanter Mode (green+ only): someone needed → skip (don't need back)
                     if roll.needDetected and roll.neededBy and not iNIFDB.enchanterMode then
-                        Debug("Someone already needed this item before Greed+Checkbox: " .. roll.neededBy)
+                        iNIF:DebugMsg("Someone already needed this item before Greed+Checkbox: " .. roll.neededBy)
                         -- Roll Need immediately
                         RollOnLoot(currentRollID, 1) -- 1 = Need
                         -- Delay message by 0.5s to appear after WoW's item roll spam
@@ -971,26 +1022,28 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                         end)
 
                         -- Announce to party/raid if enabled (delayed 0.5s like Print to avoid spam filters)
-                        Debug("Party announce check: partyMessages=" .. tostring(iNIFDB.partyMessages) .. ", IsInGroup=" .. tostring(IsInGroup()) .. ", IsInRaid=" .. tostring(IsInRaid()), 3)
+                        iNIF:DebugMsg("Party announce check: partyMessages=" .. tostring(iNIFDB.partyMessages) .. ", IsInGroup=" .. tostring(IsInGroup()) .. ", IsInRaid=" .. tostring(IsInRaid()), 3)
                         if iNIFDB.partyMessages and (IsInGroup() or IsInRaid()) then
                             local channel = IsInRaid() and "RAID" or "PARTY"
-                            Debug("Preparing party announce on channel: " .. channel, 3)
+                            iNIF:DebugMsg("Preparing party announce on channel: " .. channel, 3)
                             local cleanPlayerName = roll.neededBy:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
                             local capturedItemLink = roll.itemLink -- Capture in closure
                             C_Timer.After(0.5, function()
-                                Debug("Sending party announce: " .. cleanPlayerName .. " - " .. capturedItemLink, 3)
+                                iNIF:DebugMsg("Sending party announce: " .. cleanPlayerName .. " - " .. capturedItemLink, 3)
                                 SendChatMessage(string.format(L["ChatPartyAutoNeed"], capturedItemLink, cleanPlayerName), channel)
                             end)
                         else
-                            Debug("Party announce skipped - conditions not met", 3)
+                            iNIF:DebugMsg("Party announce skipped - conditions not met", 3)
                         end
 
                         roll.processed = true
                         return
                     end
 
-                    -- Hide the Blizzard loot frame (GroupLootFrame) (unless debug mode is on, user disabled frame hiding, or ElvUI is managing it)
-                    if not iNIFDB.debug and iNIFDB.hideLootFrame and not iNIF.ElvUILoaded then
+                    -- Hiding the Blizzard roll frame is a user preference, not a
+                    -- debug-mode behavior. Keep monitoring in the background even
+                    -- while Debug Mode is enabled for live testing.
+                    if iNIFDB.hideLootFrame and not iNIF.ElvUILoaded then
                         frame:Hide()
                     end
                     if iNIFDB.enchanterMode then
@@ -1013,6 +1066,8 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                 -- Checkbox not checked, let normal Greed happen
                 if originalOnClick then
                     originalOnClick(self, button, ...)
+                elseif RollOnLoot then
+                    RollOnLoot(currentRollID, 2)
                 end
             end
         end)
@@ -1022,10 +1077,11 @@ end
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                     Roll Monitoring (CHAT_MSG_LOOT)                            │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
--- GetLootRollItemInfo is broken in Classic - use chat messages instead
--- This function is called when we detect a Need from CHAT_MSG_LOOT
+-- Called when Forever's localized loot chat reports a Need selection.
 function iNIF.OnNeedDetected(playerName, itemLink)
-    Debug("CHAT: Need detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
+    playerName = iNIF.CleanPlayerName(playerName)
+    if not playerName then return end
+    iNIF:DebugMsg("CHAT: Need detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
 
     -- Find the matching active roll
     for rollID, roll in pairs(activeRolls) do
@@ -1034,17 +1090,20 @@ function iNIF.OnNeedDetected(playerName, itemLink)
             local rollItemLink = roll.itemLink
 
             -- Match by item link or by checking if itemLink contains the roll item
-            if itemLink and rollItemLink and (itemLink == rollItemLink or itemLink:find(rollItemLink, 1, true) or rollItemLink:find(itemLink, 1, true)) then
-                Debug("Matched Need to rollID: " .. rollID)
+            if iNIF.LootItemsMatch(itemLink, rollItemLink) then
+                iNIF:DebugMsg("Matched Need to rollID: " .. rollID)
 
                 -- Increment Need counter (count all players including self)
                 roll.needCount = (roll.needCount or 0) + 1
                 iNIF.UpdateRollCounters(rollID)
 
+                -- Track every participant, including the local player.
+                iNIF.TrackRollParticipation(playerName, rollID, "need")
+
                 -- Check if it's not us
-                local myName = UnitName("player")
-                if playerName ~= myName then
-                    Debug("Need from OTHER PLAYER: " .. playerName)
+                local myName = iNIF.GetUnitPlayerName("player")
+                if not iNIF.PlayerNamesMatch(playerName, myName) then
+                    iNIF:DebugMsg("Need from OTHER PLAYER: " .. playerName)
                     roll.needDetected = true
                     roll.neededBy = playerName
 
@@ -1056,12 +1115,9 @@ function iNIF.OnNeedDetected(playerName, itemLink)
                         end
                     end
 
-                    -- Roll tracking: track participation
-                    iNIF.TrackRollParticipation(playerName, rollID, "need")
-
                     -- Enchanter Mode: someone needs → skip (don't need back, let them have it)
                     if iNIFDB.enchanterMode then
-                        Debug("Enchanter Mode: someone needed, skipping this item")
+                        iNIF:DebugMsg("Enchanter Mode: someone needed, skipping this item")
                         return
                     end
 
@@ -1077,30 +1133,30 @@ function iNIF.OnNeedDetected(playerName, itemLink)
                         end)
 
                         -- Announce to party/raid if enabled (delayed 0.5s like Print to avoid spam filters)
-                        Debug("Party announce check: partyMessages=" .. tostring(iNIFDB.partyMessages) .. ", IsInGroup=" .. tostring(IsInGroup()) .. ", IsInRaid=" .. tostring(IsInRaid()), 3)
+                        iNIF:DebugMsg("Party announce check: partyMessages=" .. tostring(iNIFDB.partyMessages) .. ", IsInGroup=" .. tostring(IsInGroup()) .. ", IsInRaid=" .. tostring(IsInRaid()), 3)
                         if iNIFDB.partyMessages and (IsInGroup() or IsInRaid()) then
                             local channel = IsInRaid() and "RAID" or "PARTY"
-                            Debug("Preparing party announce on channel: " .. channel, 3)
+                            iNIF:DebugMsg("Preparing party announce on channel: " .. channel, 3)
                             -- Clean player name from [Loot]: prefix, color codes and hyperlinks
                             local cleanPlayerName = playerName:gsub("^%[.-%]:%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
                             local capturedItemLink = roll.itemLink -- Capture in closure
                             C_Timer.After(0.5, function()
-                                Debug("Sending party announce: " .. cleanPlayerName .. " - " .. capturedItemLink, 3)
+                                iNIF:DebugMsg("Sending party announce: " .. cleanPlayerName .. " - " .. capturedItemLink, 3)
                                 SendChatMessage(string.format(L["ChatPartyAutoNeed"], capturedItemLink, cleanPlayerName), channel)
                             end)
                         else
-                            Debug("Party announce skipped - conditions not met", 3)
+                            iNIF:DebugMsg("Party announce skipped - conditions not met", 3)
                         end
 
                         roll.processed = true
                         -- Don't clean up immediately - will be cleaned up by CANCEL_LOOT_ROLL event
                         return
                     else
-                        Debug("Need detected but checkbox not enabled yet - will handle when Greed+Checkbox is clicked")
+                        iNIF:DebugMsg("Need detected but checkbox not enabled yet - will handle when Greed+Checkbox is clicked")
                     end
                     return
                 else
-                    Debug("Ignoring my own Need: " .. playerName)
+                    iNIF:DebugMsg("Ignoring my own Need: " .. playerName)
                 end
             end
         end
@@ -1109,9 +1165,12 @@ end
 
 -- This function is called when we detect a Greed from CHAT_MSG_LOOT
 function iNIF.OnGreedDetected(playerName, itemLink)
-    Debug("CHAT: Greed detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
+    playerName = iNIF.CleanPlayerName(playerName)
+    local playerKey = iNIF.GetPlayerKey(playerName)
+    if not playerName or not playerKey then return end
+    iNIF:DebugMsg("CHAT: Greed detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
 
-    local myName = UnitName("player")
+    local myName = iNIF.GetUnitPlayerName("player")
 
     -- Find the matching active roll
     for rollID, roll in pairs(activeRolls) do
@@ -1119,18 +1178,18 @@ function iNIF.OnGreedDetected(playerName, itemLink)
             local rollItemLink = roll.itemLink
 
             -- Match by item link
-            if itemLink and rollItemLink and (itemLink == rollItemLink or itemLink:find(rollItemLink, 1, true) or rollItemLink:find(itemLink, 1, true)) then
+            if iNIF.LootItemsMatch(itemLink, rollItemLink) then
                 -- Increment Greed counter (count all players including self)
                 roll.greedCount = (roll.greedCount or 0) + 1
                 iNIF.UpdateRollCounters(rollID)
 
-                -- Track this greed (ignore our own) - track ALL greeds, not just when monitoring
-                if playerName ~= myName then
-                    roll.greedRolls[playerName] = true
-                    Debug("Tracked Greed from " .. playerName .. " for rollID " .. rollID)
+                -- Track every participant, including the local player.
+                iNIF.TrackRollParticipation(playerName, rollID, "greed")
 
-                    -- Roll tracking: track participation
-                    iNIF.TrackRollParticipation(playerName, rollID, "greed")
+                -- Track this greed (ignore our own) - track ALL greeds, not just when monitoring
+                if not iNIF.PlayerNamesMatch(playerName, myName) then
+                    roll.greedRolls[playerKey] = playerName
+                    iNIF:DebugMsg("Tracked Greed from " .. playerName .. " for rollID " .. rollID)
 
                     -- Only check if everyone greeded/decided if we're actively monitoring
                     if roll.checkboxEnabled and roll.greedClicked then
@@ -1149,7 +1208,10 @@ end
 
 -- This function is called when we detect a Pass from CHAT_MSG_LOOT
 function iNIF.OnPassDetected(playerName, itemLink)
-    Debug("CHAT: Pass detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
+    playerName = iNIF.CleanPlayerName(playerName)
+    local playerKey = iNIF.GetPlayerKey(playerName)
+    if not playerName or not playerKey then return end
+    iNIF:DebugMsg("CHAT: Pass detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
 
     -- Find the matching active roll
     for rollID, roll in pairs(activeRolls) do
@@ -1158,24 +1220,24 @@ function iNIF.OnPassDetected(playerName, itemLink)
             local rollItemLink = roll.itemLink
 
             -- Match by item link or by checking if itemLink contains the roll item
-            if itemLink and rollItemLink and (itemLink == rollItemLink or itemLink:find(rollItemLink, 1, true) or rollItemLink:find(itemLink, 1, true)) then
-                Debug("Matched Pass to rollID: " .. rollID)
+            if iNIF.LootItemsMatch(itemLink, rollItemLink) then
+                iNIF:DebugMsg("Matched Pass to rollID: " .. rollID)
 
                 -- Increment Pass counter (count all players including self)
                 roll.passCount = (roll.passCount or 0) + 1
                 iNIF.UpdateRollCounters(rollID)
 
+                -- Track every participant, including the local player.
+                iNIF.TrackRollParticipation(playerName, rollID, "pass")
+
                 -- Check if it's not us
-                local myName = UnitName("player")
-                if playerName ~= myName then
-                    Debug("Pass from OTHER PLAYER: " .. playerName)
+                local myName = iNIF.GetUnitPlayerName("player")
+                if not iNIF.PlayerNamesMatch(playerName, myName) then
+                    iNIF:DebugMsg("Pass from OTHER PLAYER: " .. playerName)
 
                     -- Track this pass
-                    roll.passRolls[playerName] = true
-                    Debug("Tracked Pass from " .. playerName .. " for rollID " .. rollID)
-
-                    -- Roll tracking: track participation
-                    iNIF.TrackRollParticipation(playerName, rollID, "pass")
+                    roll.passRolls[playerKey] = playerName
+                    iNIF:DebugMsg("Tracked Pass from " .. playerName .. " for rollID " .. rollID)
 
                     -- Only check if everyone decided if we're actively monitoring
                     if roll.checkboxEnabled and roll.greedClicked then
@@ -1187,7 +1249,7 @@ function iNIF.OnPassDetected(playerName, itemLink)
                     end
                     return
                 else
-                    Debug("Ignoring my own Pass: " .. playerName)
+                    iNIF:DebugMsg("Ignoring my own Pass: " .. playerName)
                 end
             end
         end
@@ -1207,8 +1269,6 @@ local function OnUpdate(self, elapsed)
     end
     updateTimer = 0
 
-    local currentTime = GetTime()
-
     for rollID, roll in pairs(activeRolls) do
         if not roll.processed then
             -- Check if everyone has decided (periodic check to catch delayed chat events OR iNIF comm messages)
@@ -1221,32 +1281,32 @@ local function OnUpdate(self, elapsed)
                 else
                     -- Normal iNIF (or Enchanter Mode with quality < green): Greed if everyone decided, Need if someone needed
                     CheckIfAllGreeded(rollID)
-                    CheckIfAllINIFGreeded(rollID)
                 end
             end
 
-            -- Calculate elapsed time since roll started
-            local elapsed = currentTime - roll.startTime
-            local remainingTime = roll.initialDuration - elapsed
-
-            -- Timer fallback at 2 seconds remaining
-            if remainingTime <= 2 and roll.checkboxEnabled and roll.greedClicked then
-                if iNIFDB.enchanterMode then
-                    -- Enchanter Mode: Need for disenchant if nobody needed
-                    if not roll.enchanterNeedSent and not roll.needDetected and not roll.processed then
-                        Debug("Enchanter Mode timer fallback for rollID: " .. rollID)
-                        CheckEnchanterMode(rollID)
+            local remainingTime = GetRemainingRollSeconds(rollID)
+            -- One stale/secret roll timer must not stop the other active rolls or
+            -- the monitor window from updating during this pass.
+            if remainingTime ~= nil then
+                -- Timer fallback at 2 seconds remaining
+                if remainingTime <= 2 and roll.checkboxEnabled and roll.greedClicked then
+                    if iNIFDB.enchanterMode then
+                        -- Enchanter Mode: Need for disenchant if nobody needed
+                        if not roll.enchanterNeedSent and not roll.needDetected and not roll.processed then
+                            iNIF:DebugMsg("Enchanter Mode timer fallback for rollID: " .. rollID)
+                            CheckEnchanterMode(rollID)
+                        end
+                    else
+                        -- Normal iNIF (or Enchanter Mode with quality < green): Greed (nobody needed)
+                        iNIF:DebugMsg("Timer reached 2 seconds for rollID: " .. rollID .. " (remaining: " .. string.format("%.1f", remainingTime) .. "s)")
+                        ProcessRoll(rollID)
                     end
-                else
-                    -- Normal iNIF (or Enchanter Mode with quality < green): Greed (nobody needed)
-                    Debug("Timer reached 2 seconds for rollID: " .. rollID .. " (remaining: " .. string.format("%.1f", remainingTime) .. "s)")
-                    ProcessRoll(rollID)
-                end
 
-            elseif remainingTime < 0 then
-                -- Roll expired - clean up to prevent memory leak
-                Debug("Roll expired for rollID: " .. rollID .. (roll.checkboxEnabled and " (was being monitored)" or " (not monitored)"))
-                activeRolls[rollID] = nil
+                elseif remainingTime < 0 then
+                    -- Roll expired - clean up to prevent memory leak
+                    iNIF:DebugMsg("Roll expired for rollID: " .. rollID .. (roll.checkboxEnabled and " (was being monitored)" or " (not monitored)"))
+                    activeRolls[rollID] = nil
+                end
             end
         end
     end

@@ -24,28 +24,86 @@ iNIF.Title = select(2, C_AddOns.GetAddOnInfo(addonName)):gsub("|c%x%x%x%x%x%x%x%
 iNIF.Version = C_AddOns.GetAddOnMetadata(addonName, "Version")
 iNIF.Author = C_AddOns.GetAddOnMetadata(addonName, "Author")
 
--- ╭────────────────────────────────────────────────────────────────────────────────╮
--- │                              Game Version Detection                            │
--- ╰────────────────────────────────────────────────────────────────────────────────╯
-
 iNIF.GameVersion, iNIF.GameBuild, iNIF.GameBuildDate, iNIF.GameTocVersion = GetBuildInfo()
-local gameTocNumber = tonumber(iNIF.GameTocVersion) or 0
-if gameTocNumber >= 120000 then
-    iNIF.GameVersionName = "Retail WoW"
-elseif gameTocNumber > 50000 and gameTocNumber < 59999 then
-    iNIF.GameVersionName = "Classic MoP"
-elseif gameTocNumber > 40000 and gameTocNumber < 49999 then
-    iNIF.GameVersionName = "Classic Cata"
-elseif gameTocNumber > 30000 and gameTocNumber < 39999 then
-    iNIF.GameVersionName = "Classic WotLK"
-elseif gameTocNumber >= 20500 and gameTocNumber < 30000 then
-    iNIF.GameVersionName = "Anniversary TBC"
-elseif gameTocNumber >= 20000 and gameTocNumber < 20500 then
-    iNIF.GameVersionName = "Classic TBC"
-elseif gameTocNumber > 10000 and gameTocNumber < 19999 then
-    iNIF.GameVersionName = "Classic Era"
-else
-    iNIF.GameVersionName = "Unknown Version"
+iNIF.GameVersionName = "Forever"
+
+function iNIF.IsSafeValue(value)
+    return not issecretvalue or not issecretvalue(value)
+end
+
+-- Forever uses "Firstname Lastname" for unit names, while chat and addon
+-- messages may serialize the same name as "Firstname-Lastname".
+function iNIF.CleanPlayerName(name)
+    if type(name) ~= "string" or not iNIF.IsSafeValue(name) then return nil end
+
+    name = name:gsub("^%[.-%]:%s*", "")
+        :gsub("|c%x%x%x%x%x%x%x%x", "")
+        :gsub("|r", "")
+        :gsub("|Hplayer:[^|]+|h%[([^%]]+)%]|h", "%1")
+        :gsub("|H.-|h", "")
+        :gsub("|h", "")
+        :match("^%s*(.-)%s*$") or ""
+
+    name = name:match("^%[(.-)%]$") or name
+    if not name:find(" ", 1, true) then
+        local firstName, lastName = name:match("^([^%-]+)%-([^%-]+)$")
+        if firstName and lastName then
+            name = firstName .. " " .. lastName
+        end
+    end
+
+    name = name:gsub("%s+", " "):match("^%s*(.-)%s*$") or ""
+    return name ~= "" and name or nil
+end
+
+function iNIF.GetPlayerKey(name)
+    local cleanName = iNIF.CleanPlayerName(name)
+    return cleanName and cleanName:lower() or nil
+end
+
+function iNIF.PlayerNamesMatch(firstName, secondName)
+    local first = iNIF.GetPlayerKey(firstName)
+    return first ~= nil and first == iNIF.GetPlayerKey(secondName)
+end
+
+function iNIF.GetUnitPlayerName(unit)
+    return iNIF.CleanPlayerName(UnitName(unit))
+end
+
+function iNIF.RefreshGroupRoster()
+    local roster = {}
+    local function AddUnit(unit)
+        if not UnitExists(unit) then return end
+        local name = iNIF.GetUnitPlayerName(unit)
+        local key = iNIF.GetPlayerKey(name)
+        if not key then return end
+        local _, class = UnitClass(unit)
+        local guid = UnitGUID(unit)
+        if not iNIF.IsSafeValue(class) then class = nil end
+        if not iNIF.IsSafeValue(guid) then guid = nil end
+        roster[key] = {
+            name = name,
+            guid = guid,
+            class = class,
+            unit = unit,
+        }
+    end
+
+    AddUnit("player")
+    if IsInRaid() then
+        for index = 1, GetNumGroupMembers() do AddUnit("raid" .. index) end
+    else
+        for index = 1, math.max(0, GetNumGroupMembers() - 1) do AddUnit("party" .. index) end
+    end
+    iNIF.groupRoster = roster
+    return roster
+end
+
+function iNIF.GetGroupMember(name)
+    local key = iNIF.GetPlayerKey(name)
+    if not key then return nil end
+    local roster = iNIF.groupRoster or iNIF.RefreshGroupRoster()
+    return roster[key]
 end
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
@@ -82,9 +140,8 @@ if not iNIFDB then
     }
 end
 
--- Dynamic defaults (backfill for existing users upgrading from older versions)
--- Called from ADDON_LOADED after SavedVariables are loaded from disk
-function iNIF.ApplyDynamicDefaults()
+-- Ensure the current Forever databases contain every required table/default.
+function iNIF.InitializeDatabases()
     if iNIFDB.enchanterAnnounceDE == nil then iNIFDB.enchanterAnnounceDE = true end
     if iNIFDB.enchanterAnnounceResults == nil then iNIFDB.enchanterAnnounceResults = true end
     if iNIFDB.ninjaDetection == nil then iNIFDB.ninjaDetection = true end
@@ -117,7 +174,8 @@ iNIF.activeRolls = {} -- Track active loot rolls
 iNIF.eventFrame = CreateFrame("Frame")
 iNIF.timerWindow = nil -- Timer display window
 iNIF.InCombat = false -- Combat state flag
-iNIF.ElvUILoaded = (IsAddOnLoaded and IsAddOnLoaded("ElvUI")) or false
+iNIF.ElvUILoaded = C_AddOns.IsAddOnLoaded("ElvUI")
+iNIF.groupRoster = {}
 
 -- Enchanter DE tracking (session-only)
 iNIF.enchanterHistory = {} -- { {itemLink, mats={{matLink,count}}, timestamp}, ... }
@@ -197,14 +255,14 @@ function iNIF.CreateiNIFStyleFrame(parent, width, height, anchor)
     frame:SetSize(width, height)
     frame:SetPoint(unpack(anchor))
     frame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        bgFile = "Interface\\BUTTONS\\WHITE8X8",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true,
         tileSize = 16,
         edgeSize = 16,
         insets = {left = 4, right = 4, top = 4, bottom = 4},
     })
-    frame:SetBackdropColor(0.05, 0.05, 0.1, 0.95)
-    frame:SetBackdropBorderColor(0.8, 0.8, 0.9, 1)
+    frame:SetBackdropColor(0.018, 0.016, 0.012, 0.98)
+    frame:SetBackdropBorderColor(0.72, 0.44, 0.10, 0.95)
     return frame
 end
