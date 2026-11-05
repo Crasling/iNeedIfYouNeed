@@ -900,7 +900,7 @@ function iNIF.CreateOptionsPanel()
 
     -- Icon
     local iconTexture = aboutContent:CreateTexture(nil, "ARTWORK")
-    iconTexture:SetTexture("Interface\\AddOns\\iNeedIfYouNeed\\images\\Logo_iNIF")
+    iconTexture:SetTexture("Interface\\AddOns\\iNeedIfYouNeed\\Images\\Logo_iNIF")
     iconTexture:SetSize(64, 64)
     iconTexture:SetPoint("TOP", aboutContent, "TOP", 0, y)
     y = y - 70

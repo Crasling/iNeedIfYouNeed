@@ -2,42 +2,23 @@
  iNeedIfYouNeed - Changelog
 ================================================================================
 
+v0.5.2 - AddOns Button
+--------------------------------------------------------------------------------
+[ADDED] Open iNIF from Blizzard's AddOns button
+
 v0.5.1 - Release
 --------------------------------------------------------------------------------
-
- [CHANGED] Reworked the full settings window and compact menu with iRC-style
-           dark panels, gold borders, navigation states, sections, and buttons
- [CHANGED] Rebuilt iNIF exclusively for the Forever 1.60.1 / 16001 client
- [CHANGED] Character identity now consistently supports Firstname Lastname names
-           from units and Firstname-Lastname names from chat and addon messages
- [FIX] Player chat links no longer leave brackets that break loot-name matching
- [FIX] Need, Greed, Pass, addon decisions, Luck Tracker, and ninja reports now
-       share one canonical full-name key and cannot double-count name variants
- [CHANGED] Group member names, GUIDs, and classes are cached for loot validation
- [CHANGED] Loot timers now use Forever's live roll duration instead of 60 seconds
- [CHANGED] Uses Forever event validation, modern group-loot containers, C_Item,
-           C_AddOns, and secret-value guards without legacy client fallbacks
- [CHANGED] General settings are account-wide; Quick Loot remains per-character
- [FIX] Checkbox monitoring submits Greed as soon as every other eligible player
-       has chosen Greed; mixed Greed/Pass decisions still wait for the timer
- [FIX] Unanimous-Greed checks use the captured eligible-player count directly;
-       the local player is already excluded from that count
- [FIX] Checkbox monitoring directly intercepts Forever's Greed button because
-       overlay buttons do not receive its clicks; unchecked Greed remains native
- [FIX] Loot selection parsing handles hyperlink-wrapped Loot channel prefixes,
-       while roll result messages cannot be mistaken for player selections
- [FIX] Local-player "You have selected" messages and winner lines are parsed
-       correctly without reporting ordinary roll-result lines as unmatched
- [FIX] Monitoring and roll counters resolve Forever's lower-camel loot button
-       fields as well as the upper-camel layout used by newer frame templates
- [FIX] Forever roll controls are resolved from the nested LootButtonContainer
-       used by its live group-loot frame hierarchy
- [FIX] Duplicate Forever button callbacks no longer repeat monitored Greed setup,
-       and unchanged decision counts no longer spam Debug Mode twice per second
- [FIX] The Blizzard roll frame now honors Hide Loot Frame during Debug Mode while
-       iNIF continues monitoring the held Greed decision in the background
- [FIX] An unavailable roll timer no longer stops other active rolls or the
-       monitor window from updating during the same update pass
+[CHANGED] Updated for WoW Forever
+[IMPROVED] Cleaner settings and menus
+[CHANGED] General settings are account-wide; Quick Loot stays per character
+[FIXED] Full character names are recognized correctly without double-counting players
+[FIXED] Loot timers match the actual roll duration
+[FIXED] Checking the box and clicking Greed starts monitoring correctly
+[FIXED] Monitored rolls Greed once all other eligible players choose Greed
+[FIXED] Loot choices, roll counters, and winners are tracked correctly
+[FIXED] Hidden loot frames stay hidden while monitoring continues
+[FIXED] One unavailable timer no longer interrupts other rolls
+[IMPROVED] Fewer repeated messages in Debug Mode
 
 v0.4.9 - Release
 --------------------------------------------------------------------------------

@@ -129,7 +129,8 @@ if not iNIFDB then
         ChatFrames = {}, -- Chat Output Routing
         minimapButton = {
             hide = false,
-            minimapPos = -30
+            minimapPos = -30,
+            showInCompartment = true,
         },
         monitorWindow = {
             point = "CENTER",
@@ -142,6 +143,8 @@ end
 
 -- Ensure the current Forever databases contain every required table/default.
 function iNIF.InitializeDatabases()
+    iNIFDB.minimapButton = iNIFDB.minimapButton or { hide = false, minimapPos = -30 }
+    iNIFDB.minimapButton.showInCompartment = true
     if iNIFDB.enchanterAnnounceDE == nil then iNIFDB.enchanterAnnounceDE = true end
     if iNIFDB.enchanterAnnounceResults == nil then iNIFDB.enchanterAnnounceResults = true end
     if iNIFDB.ninjaDetection == nil then iNIFDB.ninjaDetection = true end
