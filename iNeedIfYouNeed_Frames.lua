@@ -148,8 +148,9 @@ local function OnEvent(self, event, ...)
             -- Register minimap icon with saved position (must happen after SavedVars load)
             if LDBIcon and iNIF.MinimapDataObject then
                 if not iNIFDB.minimapButton then
-                    iNIFDB.minimapButton = { hide = false, minimapPos = -30 }
+                    iNIFDB.minimapButton = { hide = false, minimapPos = -30, showInCompartment = true }
                 end
+                iNIFDB.minimapButton.showInCompartment = true
                 LDBIcon:Register("iNeedIfYouNeed", iNIF.MinimapDataObject, iNIFDB.minimapButton)
             end
 
@@ -164,7 +165,7 @@ local function OnEvent(self, event, ...)
                 iNIF:DebugMsg("AceComm-3.0 not found! Cross-addon communication disabled.", 1) -- ERROR
             end
 
-            -- Delayed startup message (like iWR) - always shows, no severity prefix
+            -- Show the startup message after the initial load has settled.
             C_Timer.After(2, function()
                 local gameName = iNIF.GameVersionName or "Unknown Version"
                 print(L["DebugPrefix"] .. string.format(L["StartupMessage"], Title, gameName, Colors.Green .. "v" .. Version .. Colors.iNIF))
@@ -1152,13 +1153,12 @@ end
 -- │                              Minimap Icon                                      │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 
--- Create minimap button data object (following iWR pattern)
--- NOTE: LDBIcon:Register is deferred to ADDON_LOADED so saved minimap position is used
+-- Create the launcher now, then register it after saved minimap settings load.
 if LDBroker and LDBIcon then
     iNIF.MinimapDataObject = LDBroker:NewDataObject("iNeedIfYouNeed", {
         type = "data source",
         text = "iNIF",
-        icon = "Interface\\AddOns\\iNeedIfYouNeed\\images\\Logo_iNIF",
+        icon = "Interface\\AddOns\\iNeedIfYouNeed\\Images\\Logo_iNIF",
         iconCoords = { 0.14, 0.86, 0.10, 0.82 },
         OnClick = function(self, button)
             if button == "LeftButton" then

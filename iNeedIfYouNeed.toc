@@ -1,9 +1,9 @@
 ## Interface: 16001
-## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.5.1|r
-## Version: 0.5.1
-## Notes: |cffff9716Smart Loot addOn|n|cFFFF0000Dont let them ninja without needing back.|r
+## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.5.2|r
+## Version: 0.5.2
+## Notes: |cffff9716Optional Need/Greed monitoring, roll counters, and loot tracking.|r
 ## Author: Crasling
-## IconTexture: Interface\AddOns\iNeedIfYouNeed\images\Logo_iNIF
+## IconTexture: Interface\AddOns\iNeedIfYouNeed\Images\Logo_iNIF
 ## Category: Loot
 ## X-Curse-Project-ID: 1456725
 ## DefaultState: Enabled
