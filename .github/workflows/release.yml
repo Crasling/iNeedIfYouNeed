@@ -125,6 +125,7 @@ jobs:
             'ignore:' \
             '  - .release-changelog.md' \
             '  - .release.pkgmeta' \
+            '  - sync.ffs_lock' \
             > .release.pkgmeta
 
       - name: Build and Publish Release
