@@ -80,6 +80,7 @@ L["ChatRollingNeed"] = Colors.Red .. "Rolled NEED" .. Colors.Reset
 L["ChatBecauseNeeded"] = " on %s because " .. Colors.Yellow .. "%s" .. Colors.Reset .. " needed it"
 L["ChatPartyAutoNeed"] = "[iNIF]: Automatically needed on %s because %s needed."
 L["ChatMonitoring"] = Colors.iNIF .. "Monitoring %s... Will Need if someone Needs, otherwise Greed at end of timer."
+L["DuplicateRollManual"] = "Identical items are being rolled on. Loot chat cannot identify each copy. Counters show ?; choose Need, Greed or Pass manually for these items."
 L["ChatMonitoringEnchanter"] = Colors.iNIF .. "Monitoring %s... Will Need for disenchant if nobody else Needs."
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮

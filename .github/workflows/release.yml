@@ -126,6 +126,7 @@ jobs:
             '  - .release-changelog.md' \
             '  - .release.pkgmeta' \
             '  - sync.ffs_lock' \
+            '  - tests' \
             > .release.pkgmeta
 
       - name: Build and Publish Release

@@ -521,7 +521,7 @@ end
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 local function ProcessRoll(rollID)
     local roll = activeRolls[rollID]
-    if not roll or roll.processed then
+    if not roll or roll.processed or roll.ambiguousItem then
         return
     end
 
@@ -582,7 +582,7 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
         end
 
         local roll = activeRolls[rollID]
-        if not roll then
+        if not roll or not iNIF.LootRollItemsMatch(itemLink, roll.itemLink) then
             if iNIFDB.debug then
                 iNIF:DebugMsg("Received comm for unknown rollID: " .. rollID, 2) -- WARNING
             end
@@ -616,7 +616,7 @@ function iNIF:OnCommReceived(prefix, message, distribution, sender)
         if not rollID then return end
 
         local roll = activeRolls[rollID]
-        if not roll or roll.processed then return end
+        if not roll or roll.processed or not iNIF.LootRollItemsMatch(itemLink, roll.itemLink) then return end
 
         -- Track that another iNIF user is using Enchanter Mode on this roll
         roll.enchanterNeedSent = true -- Prevent us from also needing for disenchant
@@ -632,7 +632,7 @@ end
 -- Greed. If anyone passes, keep waiting so a late Need can still be mirrored.
 CheckIfAllGreeded = function(rollID)
     local roll = activeRolls[rollID]
-    if not roll or roll.processed or not roll.checkboxEnabled or not roll.greedClicked then
+    if not roll or roll.processed or roll.ambiguousItem or not roll.checkboxEnabled or not roll.greedClicked then
         return false
     end
 
@@ -690,7 +690,7 @@ end
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 CheckEnchanterMode = function(rollID)
     local roll = activeRolls[rollID]
-    if not roll or roll.processed then return end
+    if not roll or roll.processed or roll.ambiguousItem then return end
     if not iNIFDB.enchanterMode then return end
     if not iNIFDB.enabled then return end
 
@@ -825,9 +825,9 @@ function iNIF.UpdateRollCounters(rollID)
     end
 
     if frame then
-        if frame.iNIF_NeedCount  then frame.iNIF_NeedCount:SetText(FormatRollCount(roll.needCount))  end
-        if frame.iNIF_GreedCount then frame.iNIF_GreedCount:SetText(FormatRollCount(roll.greedCount)) end
-        if frame.iNIF_PassCount  then frame.iNIF_PassCount:SetText(FormatRollCount(roll.passCount))  end
+        if frame.iNIF_NeedCount  then frame.iNIF_NeedCount:SetText(roll.ambiguousItem and "?" or FormatRollCount(roll.needCount))  end
+        if frame.iNIF_GreedCount then frame.iNIF_GreedCount:SetText(roll.ambiguousItem and "?" or FormatRollCount(roll.greedCount)) end
+        if frame.iNIF_PassCount  then frame.iNIF_PassCount:SetText(roll.ambiguousItem and "?" or FormatRollCount(roll.passCount))  end
     end
 end
 
@@ -978,6 +978,7 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                         passCount = 0,
                     }
                     roll = activeRolls[currentRollID]
+                    iNIF.PrepareLootRoll(currentRollID)
                     iNIF:DebugMsg("Created roll object, checking if it exists: " .. tostring(roll ~= nil) .. ", rollID=" .. currentRollID)
 
                     -- Verify it was actually stored
@@ -989,6 +990,11 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                 end
 
                 if roll then
+                    if roll.ambiguousItem then
+                        checkbox:SetChecked(false)
+                        iNIF.WarnAmbiguousLootRoll()
+                        return
+                    end
                     roll.checkboxEnabled = true
                     roll.greedClicked = true
                     roll.ourDecisionTime = GetTime()  -- Record when we decided
@@ -1078,14 +1084,16 @@ end
 -- │                     Roll Monitoring (CHAT_MSG_LOOT)                            │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
 -- Called when Forever's localized loot chat reports a Need selection.
-function iNIF.OnNeedDetected(playerName, itemLink)
+function iNIF.OnNeedDetected(playerName, itemLink, explicitRollID)
     playerName = iNIF.CleanPlayerName(playerName)
     if not playerName then return end
+    local selectedRollID = iNIF.ResolveLootDecision(playerName, itemLink, "need", explicitRollID)
+    if not selectedRollID then return end
     iNIF:DebugMsg("CHAT: Need detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
 
     -- Find the matching active roll
     for rollID, roll in pairs(activeRolls) do
-        if not roll.processed then
+        if rollID == selectedRollID and not roll.processed then
             -- Check if this is the same item (compare item links or names)
             local rollItemLink = roll.itemLink
 
@@ -1164,17 +1172,19 @@ function iNIF.OnNeedDetected(playerName, itemLink)
 end
 
 -- This function is called when we detect a Greed from CHAT_MSG_LOOT
-function iNIF.OnGreedDetected(playerName, itemLink)
+function iNIF.OnGreedDetected(playerName, itemLink, explicitRollID)
     playerName = iNIF.CleanPlayerName(playerName)
     local playerKey = iNIF.GetPlayerKey(playerName)
     if not playerName or not playerKey then return end
+    local selectedRollID = iNIF.ResolveLootDecision(playerName, itemLink, "greed", explicitRollID)
+    if not selectedRollID then return end
     iNIF:DebugMsg("CHAT: Greed detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
 
     local myName = iNIF.GetUnitPlayerName("player")
 
     -- Find the matching active roll
     for rollID, roll in pairs(activeRolls) do
-        if not roll.processed then
+        if rollID == selectedRollID and not roll.processed then
             local rollItemLink = roll.itemLink
 
             -- Match by item link
@@ -1207,15 +1217,17 @@ function iNIF.OnGreedDetected(playerName, itemLink)
 end
 
 -- This function is called when we detect a Pass from CHAT_MSG_LOOT
-function iNIF.OnPassDetected(playerName, itemLink)
+function iNIF.OnPassDetected(playerName, itemLink, explicitRollID)
     playerName = iNIF.CleanPlayerName(playerName)
     local playerKey = iNIF.GetPlayerKey(playerName)
     if not playerName or not playerKey then return end
+    local selectedRollID = iNIF.ResolveLootDecision(playerName, itemLink, "pass", explicitRollID)
+    if not selectedRollID then return end
     iNIF:DebugMsg("CHAT: Pass detected from " .. playerName .. " for " .. (itemLink or "unknown item"), 3) -- INFO
 
     -- Find the matching active roll
     for rollID, roll in pairs(activeRolls) do
-        if not roll.processed then
+        if rollID == selectedRollID and not roll.processed then
             -- Check if this is the same item (compare item links or names)
             local rollItemLink = roll.itemLink
 

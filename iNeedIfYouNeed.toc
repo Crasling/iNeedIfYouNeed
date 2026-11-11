@@ -1,6 +1,6 @@
 ## Interface: 16001
-## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.5.2|r
-## Version: 0.5.2
+## Title: |cffff9716iNeedIfYouNeed |cFF00FF00v0.5.3|r
+## Version: 0.5.3
 ## Notes: |cffff9716Optional Need/Greed monitoring, roll counters, and loot tracking.|r
 ## Author: Crasling
 ## IconTexture: Interface\AddOns\iNeedIfYouNeed\Images\Logo_iNIF
@@ -16,6 +16,7 @@ Localization\locale.xml
 
 iNeedIfYouNeed_Main.lua
 iNeedIfYouNeed_RollLogic.lua
+iNeedIfYouNeed_RollTracking.lua
 iNeedIfYouNeed_OptionsPanel.lua
 iNeedIfYouNeed_Frames.lua
 iNeedIfYouNeed_SlashCommands.lua

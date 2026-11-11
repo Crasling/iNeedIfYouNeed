@@ -2,6 +2,12 @@
  iNeedIfYouNeed - Changelog
 ================================================================================
 
+v0.5.3 - Loot Roll Fixes
+--------------------------------------------------------------------------------
+[CHANGED] Choose each roll manually when identical items drop together
+[FIXED] Repeated loot messages no longer inflate roll counts
+[FIXED] Different versions of an item keep separate roll counts
+
 v0.5.2 - AddOns Button
 --------------------------------------------------------------------------------
 [ADDED] Open iNIF from Blizzard's AddOns button

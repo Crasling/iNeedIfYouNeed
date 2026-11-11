@@ -41,7 +41,7 @@ local function MatchGlobalFormat(message, formatString)
 end
 
 local function LootItemsMatch(firstItem, secondItem)
-    return iNIF.LootItemsMatch(firstItem, secondItem)
+    return iNIF.LootRollItemsMatch(firstItem, secondItem)
 end
 
 local function ResolveLootPlayerName(name)
@@ -116,7 +116,7 @@ local function TrackLootRollWin(playerName, itemLink)
     if not iNIFDB.rollTracker then return false end
 
     local function TrackForRoll(roll)
-        if not roll or roll.trackerWinnerRecorded then return false end
+        if not roll or roll.trackerWinnerRecorded or roll.ambiguousItem then return false end
         if not LootItemsMatch(roll.itemLink, itemLink) then return false end
 
         roll.trackerWinnerRecorded = true
@@ -300,6 +300,7 @@ local function OnEvent(self, event, ...)
             passCount = 0,   -- Running tally of Pass presses
         }
 
+        iNIF.PrepareLootRoll(rollID)
         iNIF:DebugMsg("Started timer for rollID: " .. rollID .. ", stored itemLink: " .. tostring(activeRolls[rollID].itemLink) .. ", duration: " .. string.format("%.1fs", rollDuration))
 
         -- Find and enhance the roll frame (give ElvUI extra time to skin the frame)
@@ -334,7 +335,8 @@ local function OnEvent(self, event, ...)
                             iNIF.EnhanceRollFrame(frame, rollID)
                         end
                         -- QuickLoot Auto Toggle: pre-check the checkbox
-                        if activeRolls[rollID] and activeRolls[rollID].quickLootAutoToggle and frame.iNIF_Checkbox then
+                        if activeRolls[rollID] and not activeRolls[rollID].ambiguousItem
+                            and activeRolls[rollID].quickLootAutoToggle and frame.iNIF_Checkbox then
                             frame.iNIF_Checkbox:SetChecked(true)
                             if iNIFDB.checkboxRememberState then
                                 iNIFDB.checkboxChecked = true
@@ -342,6 +344,7 @@ local function OnEvent(self, event, ...)
                             print(L["PrintPrefix"] .. string.format(L["QuickLootAutoToggle"], activeRolls[rollID].itemLink or ""))
                             iNIF:DebugMsg("QuickLoot: Auto-toggled checkbox for rollID: " .. rollID, 3)
                         end
+                        iNIF.UpdateRollCounters(rollID)
                         break
                     end
                 end
@@ -353,13 +356,11 @@ local function OnEvent(self, event, ...)
         if type(rollID) ~= "number" or not iNIF.IsSafeValue(rollID) then return end
         iNIF:DebugMsg("CANCEL_LOOT_ROLL: " .. tostring(rollID))
         if activeRolls[rollID] then
-            if iNIFDB.rollTracker then
-                PruneCompletedRolls()
-                table.insert(iNIF.recentlyCompletedRolls, {
-                    roll = activeRolls[rollID],
-                    endTime = GetTime(),
-                })
-            end
+            PruneCompletedRolls()
+            table.insert(iNIF.recentlyCompletedRolls, {
+                roll = activeRolls[rollID],
+                endTime = GetTime(),
+            })
             activeRolls[rollID] = nil
         end
 
