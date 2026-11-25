@@ -3,7 +3,7 @@ unpack = unpack or table.unpack
 local now, timers, submissions, messages = 100, {}, {}, {}
 local hidden = setmetatable({}, { __tostring = function() error("secret converted") end })
 function issecretvalue(value) return rawequal(value, hidden) end
-local function widget()
+local function widget(parent)
     local methods = {}
     function methods:SetScript(event, run) self[event] = run end
     function methods:GetScript(event) return self[event] end
@@ -15,28 +15,51 @@ local function widget()
     function methods:SetChecked(value) self.checked = value end
     function methods:GetChecked() return self.checked end
     function methods:Show() self.shown = true end
-    function methods:Hide() self.shown = false end
+    function methods:Hide()
+        if not self.shown then return end
+        self.shown = false
+        local handler = rawget(self, "OnHide")
+        if handler then handler(self) end
+    end
     function methods:IsShown() return self.shown == true end
     function methods:SetShown(value) self.shown = value end
     function methods:GetWidth() return 280 end
     function methods:GetHeight() return 20 end
+    function methods:GetAlpha() return self.alpha or 1 end
+    function methods:SetAlpha(value) self.alpha = value end
+    function methods:IsMouseClickEnabled() return self.mouseClicks == true end
+    function methods:IsMouseMotionEnabled() return self.mouseMotion == true end
+    function methods:IsMouseWheelEnabled() return self.mouseWheel == true end
+    function methods:SetMouseClickEnabled(value) self.mouseClicks = value end
+    function methods:SetMouseMotionEnabled(value) self.mouseMotion = value end
+    function methods:EnableMouseWheel(value) self.mouseWheel = value end
+    function methods:GetChildren() return unpack(self.children or {}) end
     function methods:CreateTexture() return widget() end
     function methods:CreateFontString() return widget() end
     function methods:HookScript(event, run)
         local previous = self[event]
         self[event] = function(...) if previous then previous(...) end; run(...) end
     end
-    return setmetatable({}, { __index = function(_, key)
+    local frame = setmetatable({}, { __index = function(_, key)
         if methods[key] then return methods[key] end
         if key:match("^[A-Z]") then return function() end end
     end })
+    if parent then
+        parent.children = parent.children or {}
+        parent.children[#parent.children + 1] = frame
+    end
+    return frame
 end
 UIParent, UISpecialFrames = widget(), {}
 NUM_CHAT_WINDOWS = 1
-function CreateFrame(kind, name)
-    local frame = widget()
+function CreateFrame(kind, name, parent)
+    local frame = widget(parent)
     frame.name = name
-    if kind == "CheckButton" then frame.Text = widget(); frame.text = frame.Text end
+    if kind == "CheckButton" then
+        frame.Text = widget()
+        frame.text = frame.Text
+        frame.mouseClicks, frame.mouseMotion = true, true
+    end
     if name then _G[name] = frame end
     return frame
 end
@@ -102,6 +125,26 @@ local function reset()
     iNIFDB.enchanterMode = false
     iNIFDB.rollTracker = true
 end
+local function advance(seconds)
+    now = now + seconds
+    local pending = timers
+    timers = {}
+    for _, timer in ipairs(pending) do
+        if timer.at <= now then timer.run() else timers[#timers + 1] = timer end
+    end
+end
+
+local function enhance(frame)
+    frame.NeedButton, frame.GreedButton, frame.PassButton = widget(frame), widget(frame), widget(frame)
+    frame.GreedButton:SetScript("OnClick", function() RollOnLoot(frame.rollID, 2) end)
+    iNIF.EnhanceRollFrame(frame, frame.rollID)
+end
+
+local function monitor(frame)
+    frame.iNIF_Checkbox:SetChecked(true)
+    frame.GreedButton.OnClick(frame.GreedButton, "LeftButton")
+end
+
 local link = "|cffffffff|Hitem:123:0:0:0:0:0:0:0|h[Test Item]|h|r"
 reset()
 local roll, frame = start(1, link)
@@ -113,11 +156,13 @@ event("CHAT_MSG_LOOT", "Local Player has selected Greed for: " .. link)
 assert(roll.greedCount == 2, "the local participant counts once too")
 reset()
 local first, firstFrame = start(10, link)
-first.checkboxEnabled, first.greedClicked = true, true
-firstFrame:Hide()
+enhance(firstFrame)
+monitor(firstFrame)
+assert(firstFrame:GetAlpha() == 0, "the first roll starts hidden while monitoring")
 local second, secondFrame = start(11, link)
 assert(first.ambiguousItem and second.ambiguousItem and not first.greedClicked
-    and firstFrame:IsShown(), "a second indistinguishable copy pauses monitoring and restores the first frame")
+    and firstFrame:GetAlpha() == 1 and firstFrame.iNIF_Checkbox:IsMouseClickEnabled(),
+    "a second indistinguishable copy pauses monitoring and restores the first frame")
 assert(firstFrame.iNIF_GreedCount.text == "?" and secondFrame.iNIF_GreedCount.text == "?",
     "both frames show unknown counters rather than a combined total")
 for _, who in ipairs({ "Other Player", "Local Player" }) do
@@ -187,3 +232,53 @@ assert(#submissions == 1 and submissions[1].id == 40 and submissions[1].choice =
     "normal monitored Greed still submits once every other eligible player greeds")
 assert(not iNIF.ResolveLootDecision("Other Player", hidden, "need"), "restricted item values are never read")
 print("PASS: unique-roll automatic Need/Greed remains intact and restricted item values are ignored")
+
+reset()
+first, firstFrame = start(50, link)
+firstFrame:SetAlpha(0.8)
+firstFrame:SetMouseClickEnabled(true)
+firstFrame:EnableMouseWheel(true)
+enhance(firstFrame)
+local tooltipDismissed = false
+GameTooltip = {
+    IsOwned = function(_, control) return control == firstFrame.iNIF_Checkbox end,
+    Hide = function() tooltipDismissed = true end,
+}
+firstFrame.GreedButton:SetMouseMotionEnabled(true)
+monitor(firstFrame)
+assert(firstFrame:IsShown() and firstFrame:GetAlpha() == 0 and first.greedClicked,
+    "monitoring hides the window visually while keeping its native slot reserved")
+assert(not firstFrame:IsMouseClickEnabled() and not firstFrame:IsMouseWheelEnabled())
+assert(not firstFrame.GreedButton:IsMouseMotionEnabled() and not firstFrame.iNIF_Checkbox:IsMouseClickEnabled()
+    and tooltipDismissed, "invisible controls and the roll tooltip cannot block the world")
+assert(not iNIF.RestoreLootRollFrame(firstFrame, 51), "one roll cannot reveal another roll's frame")
+assert(iNIF.RestoreLootRollFrame(firstFrame, 50) and firstFrame:GetAlpha() == 0.8)
+assert(firstFrame:IsMouseClickEnabled() and not firstFrame:IsMouseMotionEnabled()
+    and firstFrame.GreedButton:IsMouseMotionEnabled() and firstFrame:IsMouseWheelEnabled(),
+    "manual reveal restores the original click, motion, wheel, and alpha settings")
+
+itemLinks[51] = variant
+event("START_LOOT_ROLL", 51, 60000)
+advance(0.2)
+assert(iNIF.activeRolls[51], "queued roll stays active before its frame appears")
+event("CANCEL_LOOT_ROLL", 50)
+firstFrame:Hide()
+GroupLootContainer.rollFrames[50] = nil
+firstFrame.rollID = 51
+GroupLootContainer.rollFrames[51] = firstFrame
+firstFrame:Show()
+advance(0.6)
+assert(not firstFrame.iNIF_Checkbox:GetChecked(), "a queued roll resets the reused checkbox")
+monitor(firstFrame)
+local queued = iNIF.activeRolls[51]
+assert(queued.frame == firstFrame and firstFrame:GetAlpha() == 0 and not firstFrame:IsMouseClickEnabled())
+iNIF.OnGreedDetected("Other Player", variant, 51)
+assert(#submissions == 1 and submissions[1].id == 51 and submissions[1].choice == 2)
+event("CANCEL_LOOT_ROLL", 51)
+firstFrame:Hide()
+assert(not firstFrame.iNIF_HiddenRoll and firstFrame:GetAlpha() == 0.8
+    and firstFrame:IsMouseClickEnabled() and firstFrame.iNIF_Checkbox:IsMouseClickEnabled()
+    and not firstFrame.iNIF_Checkbox:GetChecked(),
+    "native completion restores input for reuse and leaves no checked state")
+GameTooltip = nil
+print("PASS: hidden roll windows release the mouse, preserve reservations, and restore input after reuse")

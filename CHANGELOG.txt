@@ -2,6 +2,13 @@
  iNeedIfYouNeed - Changelog
 ================================================================================
 
+v0.5.4 - Loot Roll Windows and Settings
+--------------------------------------------------------------------------------
+[FIXED] Hidden loot roll windows no longer block clicks or camera movement while iNIF monitors the roll.
+[FIXED] iNIF controls appear on loot rolls that wait for a free window.
+[IMPROVED] Redesigned the settings window with clearer pages and controls.
+[CHANGED] Other Addons links to iRC: Guild Connect in place of iSoundPlayer.
+
 v0.5.3 - Loot Roll Fixes
 --------------------------------------------------------------------------------
 [CHANGED] Choose each roll manually when identical items drop together

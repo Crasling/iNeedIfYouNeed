@@ -36,6 +36,14 @@ local Colors = {
 }
 
 local L = addon.L
+L["TabIRC"] = "Настройки iRC"
+L["TabIRCPromo"] = "iRC: Guild Connect"
+L["SettingsSectionIRC"] = Colors.iNIF .. "iRC: Guild Connect"
+L["IRCInstalledDesc"] = Colors.iNIF .. "iRC: Guild Connect" .. Colors.Reset .. " установлен. Откройте настройки управления гильдией."
+L["IRCOpenSettingsButton"] = "Открыть настройки iRC"
+L["IRCPromoDesc"] = Colors.iNIF .. "iRC: Guild Connect" .. Colors.Reset .. " показывает статистику гильдии, профессии участников и инструменты управления."
+L["IRCPromoLink"] = "Доступен в CurseForge: iRC: Guild Connect."
+L["ErroriRCNotFound"] = "Не удалось открыть настройки iRC."
 
 -- Helper function for consistent message formatting
 local function Msg(message)
@@ -184,8 +192,6 @@ L["Tab1General"] = "Общие" -- ИИ перевод
 L["Tab2About"] = "О нас" -- ИИ перевод
 L["Tab3iWR"] = "Настройки iWR" -- ИИ перевод
 L["Tab3iWRPromo"] = "iWillRemember"
-L["Tab4iSP"] = "Настройки iSP" -- ИИ перевод
-L["Tab4iSPPromo"] = "iSoundPlayer"
 
 -- QuickLoot Tab -- ИИ перевод
 L["Tab2QuickLoot"] = "Быстрая добыча" -- ИИ перевод
@@ -210,21 +216,12 @@ L["QuickLootAutoToggle"] = "Быстрая добыча: Автопереклю�
 
 -- Error messages -- ИИ перевод
 L["ErroriWRNotFound"] = "Аддон iWR не найден или настройки не инициализированы!" -- ИИ перевод
-L["ErroriSPNotFound"] = "Аддон iSP не найден или настройки не инициализированы!" -- ИИ перевод
 
 -- iWR Promo (when NOT installed) -- ИИ перевод
 L["IWRPromoDesc"] = Colors.iNIF .. "iWillRemember" .. Colors.Reset .. " — это аддон для персональных заметок об игроках. Отслеживайте друзей, врагов и запоминающиеся встречи. Добавляйте заметки, назначайте типы отношений и делитесь с друзьями.\n\n" .. Colors.Reset .. "Улучшенная рамка цели, предупреждения о группе, интеграция с чатом и многое другое!" -- ИИ перевод
 L["IWRPromoLink"] = "Доступно в приложении CurseForge и на curseforge.com/wow/addons/iwillremember" -- ИИ перевод
 
--- iSP Promo (when NOT installed) -- ИИ перевод
-L["ISPPromoDesc"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " — это аддон для пользовательских звуков. Воспроизводите MP3/OGG файлы по игровым событиям — вход, повышение уровня, достижения, убийства и многое другое!\n\n" .. Colors.Reset .. "40+ триггеров событий, отслеживание PvP мульти-убийств, зацикливание и расширенные настройки звука." -- ИИ перевод
-L["ISPPromoLink"] = "Доступно в приложении CurseForge и на curseforge.com/wow/addons/isoundplayer" -- ИИ перевод
 
--- iSP Settings (when installed) -- ИИ перевод
-L["SettingsSectionISP"] = Colors.iNIF .. "Настройки iSoundPlayer" -- ИИ перевод
-L["ISPInstalledDesc1"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " установлен! Вы можете открыть настройки iSP отсюда." -- ИИ перевод
-L["ISPInstalledDesc2"] = Colors.Gray .. "Примечание: Эти настройки управляются iSP и повлияют на аддон iSP." .. Colors.Reset -- ИИ перевод
-L["ISPOpenSettingsButton"] = "Открыть настройки iSP" -- ИИ перевод
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                    Панель меню (ПКМ на миникарте)                              │
@@ -304,8 +301,6 @@ L["Tab3Enchanter"] = "Зачарователь" -- ИИ перевод
 L["Tab4About"] = "О нас" -- ИИ перевод
 L["Tab5iWR"] = "Настройки iWR" -- ИИ перевод
 L["Tab5iWRPromo"] = "iWillRemember"
-L["Tab6iSP"] = "Настройки iSP" -- ИИ перевод
-L["Tab6iSPPromo"] = "iSoundPlayer"
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                Панель настроек - Вкладка Зачарователь (v0.4.0)               │

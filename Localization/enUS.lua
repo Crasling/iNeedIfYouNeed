@@ -189,11 +189,16 @@ L["WelcomeEnd"] = Colors.iNIF .. " for being part of the development of iNeedIfY
 L["SidebarHeaderiNIF"] = Colors.iNIF .. "iNeedIfYouNeed|r"
 L["SidebarHeaderOtherAddons"] = Colors.iNIF .. "Other Addons|r"
 L["Tab1General"] = "General"
+L["SettingsLabel"] = "Settings"
+L["SettingsSavedAutomatically"] = "Changes are saved automatically."
+L["SettingsGeneralSummary"] = "Choose how rolls and alerts appear."
+L["SettingsQuickLootSummary"] = "Set automatic choices for specific items."
+L["SettingsEnchanterSummary"] = "Manage disenchant rolls and session history."
+L["SettingsAboutSummary"] = "Addon information and debugging."
+L["SettingsCompanionSummary"] = "Information and settings for this addon."
 L["Tab2About"] = "About"
 L["Tab3iWR"] = "iWR Settings"
 L["Tab3iWRPromo"] = "iWillRemember"
-L["Tab4iSP"] = "iSP Settings"
-L["Tab4iSPPromo"] = "iSoundPlayer"
 
 -- QuickLoot Tab
 L["Tab2QuickLoot"] = "QuickLoot"
@@ -218,21 +223,18 @@ L["QuickLootAutoToggle"] = "QuickLoot: Auto-toggled checkbox on %s"
 
 -- Error messages
 L["ErroriWRNotFound"] = "iWR addon not found or settings not initialized!"
-L["ErroriSPNotFound"] = "iSP addon not found or settings not initialized!"
+L["ErroriRCNotFound"] = "iRC is not ready to open its settings."
 
 -- iWR Promo (when NOT installed)
 L["IWRPromoDesc"] = Colors.iNIF .. "iWillRemember" .. Colors.Reset .. " is a personalized player notes addon. Keep track of friends, foes, and memorable encounters. Add custom notes, assign relationship types, and share with your friends.\n\n" .. Colors.Reset .. "Enhanced TargetFrame, group warnings, chat integration, and more!"
 L["IWRPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/iwillremember"
 
--- iSP Promo (when NOT installed)
-L["ISPPromoDesc"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " is a custom sound player addon. Play MP3/OGG files triggered by in-game events - login, level up, achievements, kills, and more!\n\n" .. Colors.Reset .. "40+ event triggers, PvP multi-kill tracking, looping support, and advanced sound options."
-L["ISPPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/addons/isoundplayer"
-
--- iSP Settings (when installed)
-L["SettingsSectionISP"] = Colors.iNIF .. "iSoundPlayer Settings"
-L["ISPInstalledDesc1"] = Colors.iNIF .. "iSoundPlayer" .. Colors.Reset .. " is installed! You can access iSP settings from here."
-L["ISPInstalledDesc2"] = Colors.Gray .. "Note: These settings are managed by iSP and will affect the iSP addon." .. Colors.Reset
-L["ISPOpenSettingsButton"] = "Open iSP Settings"
+-- iRC Settings and promo
+L["SettingsSectionIRC"] = Colors.iNIF .. "iRC: Guild Connect"
+L["IRCInstalledDesc"] = Colors.iNIF .. "iRC: Guild Connect" .. Colors.Reset .. " is installed. Open its settings for guild tools and personal preferences."
+L["IRCOpenSettingsButton"] = "Open iRC Settings"
+L["IRCPromoDesc"] = Colors.iNIF .. "iRC: Guild Connect" .. Colors.Reset .. " brings guild statistics, professions, shared rules, and management tools together."
+L["IRCPromoLink"] = "Available in the CurseForge app. Search for iRC: Guild Connect."
 
 -- iST Promo
 L["TabIST"] = "iST Settings"
@@ -247,8 +249,8 @@ L["ISTPromoLink"] = "Available on the CurseForge App and at curseforge.com/wow/a
 -- Standardized tab labels (matching other addon patterns)
 L["TabIWR"] = "iWR Settings"
 L["TabIWRPromo"] = "iWillRemember"
-L["TabISP"] = "iSP Settings"
-L["TabISPPromo"] = "iSoundPlayer"
+L["TabIRC"] = "iRC Settings"
+L["TabIRCPromo"] = "iRC: Guild Connect"
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                      Menu Panel (Minimap Right-Click)                          │
 -- ╰────────────────────────────────────────────────────────────────────────────────╯
@@ -327,8 +329,6 @@ L["Tab3Enchanter"] = "Enchanter"
 L["Tab4About"] = "About"
 L["Tab5iWR"] = "iWR Settings"
 L["Tab5iWRPromo"] = "iWillRemember"
-L["Tab6iSP"] = "iSP Settings"
-L["Tab6iSPPromo"] = "iSoundPlayer"
 
 -- ╭────────────────────────────────────────────────────────────────────────────────╮
 -- │                    Settings Panel - Enchanter Tab (v0.4.0)                   │

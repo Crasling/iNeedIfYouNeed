@@ -29,7 +29,7 @@ local function MarkAmbiguous(rollID, roll)
     end
     if frame and frame.rollID == rollID then
         if frame.iNIF_Checkbox then frame.iNIF_Checkbox:SetChecked(false) end
-        if wasMonitoring then frame:Show() end
+        if wasMonitoring then iNIF.RestoreLootRollFrame(frame, rollID) end
     end
     iNIF.UpdateRollCounters(rollID)
 end

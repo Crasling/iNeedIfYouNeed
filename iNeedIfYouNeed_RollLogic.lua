@@ -790,6 +790,58 @@ function iNIF.GetLootRollFrames()
     return frames
 end
 
+function iNIF.RestoreLootRollFrame(frame, rollID)
+    local hidden = frame and frame.iNIF_HiddenRoll
+    if not hidden or (rollID and (hidden.rollID ~= rollID or frame.rollID ~= rollID)) then return false end
+
+    frame.iNIF_HiddenRoll = nil
+    frame:SetAlpha(hidden.alpha)
+    for _, input in ipairs(hidden.inputs) do
+        local control = input.control
+        if input.clicks ~= nil then
+            control:SetMouseClickEnabled(input.clicks)
+            control:SetMouseMotionEnabled(input.motion)
+        else
+            control:EnableMouse(input.mouse)
+        end
+        if input.wheel then control:EnableMouseWheel(true) end
+    end
+    return true
+end
+
+local function DisableLootFrameInput(control, inputs)
+    local input = { control = control }
+    if control.SetMouseClickEnabled and control.SetMouseMotionEnabled then
+        input.clicks = control:IsMouseClickEnabled()
+        input.motion = control:IsMouseMotionEnabled()
+        control:SetMouseClickEnabled(false)
+        control:SetMouseMotionEnabled(false)
+    else
+        input.mouse = control:IsMouseEnabled()
+        control:EnableMouse(false)
+    end
+    if control:IsMouseWheelEnabled() then
+        input.wheel = true
+        control:EnableMouseWheel(false)
+    end
+    inputs[#inputs + 1] = input
+    if GameTooltip and GameTooltip:IsOwned(control) then GameTooltip:Hide() end
+    for _, child in ipairs({ control:GetChildren() }) do
+        DisableLootFrameInput(child, inputs)
+    end
+end
+
+local function SuppressLootRollFrame(frame, rollID)
+    if frame.iNIF_HiddenRoll or not frame:IsShown() then return end
+    -- Blizzard keeps the frame registered until the roll ends and may reuse
+    -- frames that report IsShown() == false. Suppress its visuals and input
+    -- while leaving it registered for the normal roll completion events.
+    local hidden = { rollID = rollID, alpha = frame:GetAlpha(), inputs = {} }
+    frame.iNIF_HiddenRoll = hidden
+    DisableLootFrameInput(frame, hidden.inputs)
+    frame:SetAlpha(0)
+end
+
 -- Show or hide all count labels on currently visible roll frames.
 -- Called when the showRollCounts setting is toggled.
 function iNIF.RefreshRollCountLabels()
@@ -856,6 +908,10 @@ function iNIF.EnhanceRollFrame(frame, rollID)
     local checkbox = CreateCheckbox(frame, rollID)
     frame.iNIF_Checkbox = checkbox
     frame.iNIF_Enhanced = true
+    frame:HookScript("OnHide", function(self)
+        iNIF.RestoreLootRollFrame(self)
+        checkbox:SetChecked(false)
+    end)
 
     -- Enchanter Mode label
     local enchanterLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -1050,7 +1106,7 @@ function iNIF.EnhanceRollFrame(frame, rollID)
                     -- debug-mode behavior. Keep monitoring in the background even
                     -- while Debug Mode is enabled for live testing.
                     if iNIFDB.hideLootFrame and not iNIF.ElvUILoaded then
-                        frame:Hide()
+                        SuppressLootRollFrame(frame, currentRollID)
                     end
                     if iNIFDB.enchanterMode then
                         Print(string.format(L["ChatMonitoringEnchanter"], roll.itemLink))

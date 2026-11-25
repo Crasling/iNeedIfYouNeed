@@ -304,13 +304,18 @@ local function OnEvent(self, event, ...)
         iNIF:DebugMsg("Started timer for rollID: " .. rollID .. ", stored itemLink: " .. tostring(activeRolls[rollID].itemLink) .. ", duration: " .. string.format("%.1fs", rollDuration))
 
         -- Find and enhance the roll frame (give ElvUI extra time to skin the frame)
+        local roll = activeRolls[rollID]
         local frameSearchDelay = iNIF.ElvUILoaded and 0.3 or 0.1
-        C_Timer.After(frameSearchDelay, function()
+        local function AttachRollFrame()
+            if not iNIFDB.enabled or activeRolls[rollID] ~= roll or roll.processed then return end
             -- Forever places active roll frames in GroupLootContainer.rollFrames.
             for _, frame in ipairs(iNIF.GetLootRollFrames()) do
                 if frame and frame:IsShown() then
                     local frameRollID = frame.rollID
                     if frameRollID == rollID then
+                        if frame.iNIF_HiddenRoll and frame.iNIF_HiddenRoll.rollID ~= rollID then
+                            iNIF.RestoreLootRollFrame(frame)
+                        end
                         -- If already enhanced, reset checkbox for new roll
                         if frame.iNIF_Enhanced and frame.iNIF_Checkbox then
                             iNIF:DebugMsg("Resetting checkbox to UNCHECKED for new rollID: " .. rollID, 3) -- INFO
@@ -345,11 +350,16 @@ local function OnEvent(self, event, ...)
                             iNIF:DebugMsg("QuickLoot: Auto-toggled checkbox for rollID: " .. rollID, 3)
                         end
                         iNIF.UpdateRollCounters(rollID)
-                        break
+                        return
                     end
                 end
             end
-        end)
+            -- A roll can be queued until Blizzard frees one of its visible slots.
+            if GetTime() < roll.startTime + roll.initialDuration then
+                C_Timer.After(0.5, AttachRollFrame)
+            end
+        end
+        C_Timer.After(frameSearchDelay, AttachRollFrame)
 
     elseif event == "CANCEL_LOOT_ROLL" then
         local rollID = ...
@@ -1168,8 +1178,7 @@ if LDBroker and LDBIcon then
                     -- Shift+Left: Show all hidden loot frames
                     local framesShown = 0
                     for rollID, roll in pairs(activeRolls) do
-                        if roll.frame and roll.checkboxEnabled and not roll.frame:IsShown() then
-                            roll.frame:Show()
+                        if roll.checkboxEnabled and not roll.processed and iNIF.RestoreLootRollFrame(roll.frame, rollID) then
                             framesShown = framesShown + 1
                             iNIF:DebugMsg("Showing hidden loot frame for rollID: " .. rollID, 3) -- INFO
                         end
